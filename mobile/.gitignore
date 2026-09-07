@@ -1,0 +1,48 @@
+# Sensitive Data & Environment
+.env
+.env.*
+*.env
+!.env.example
+!.env.*.example
+
+# Keystores & Signing Keys
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+google-services.json
+GoogleService-Info.plist
+*.mobileprovision
+credentials.json
+
+# Dependencies
+node_modules/
+
+# Expo & Metro
+.expo/
+.expo-alert-check/
+.expo-shared/
+web-build/
+.metro-health-check*
+
+# Native Builds
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+ios/Pods/
+ios/build/
+*.apk
+*.aab
+*.ipa
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# Temp & OS
+.DS_Store
+Thumbs.db

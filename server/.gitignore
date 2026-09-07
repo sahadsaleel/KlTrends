@@ -1,0 +1,40 @@
+# Sensitive Data & Environment
+.env
+.env.*
+*.env
+!.env.example
+!.env.*.example
+
+# Credentials & Certificates
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets.*
+credentials.json
+
+# Dependencies
+node_modules/
+
+# Production Build
+dist/
+build/
+*.tsbuildinfo
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Databases
+*.sqlite
+*.sqlite3
+*.db
+dump.rdb
+
+# Temp & OS
+.DS_Store
+Thumbs.db

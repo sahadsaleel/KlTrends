@@ -1,0 +1,47 @@
+import { Response, NextFunction } from 'express';
+import { AuthenticatedRequest } from '../types/index.js';
+import { verifyToken } from '../utils/jwt.js';
+
+export const protect = (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): void => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    res.status(401).json({
+      success: false,
+      error: 'Not authorized. Token missing or invalid.',
+    });
+    return;
+  }
+
+  const token = authHeader.split(' ')[1];
+
+  try {
+    const decoded = verifyToken(token);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    res.status(401).json({
+      success: false,
+      error: 'Invalid or expired token. Please log in again.',
+    });
+  }
+};
+
+export const adminOnly = (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): void => {
+  if (req.user && req.user.role === 'admin') {
+    next();
+  } else {
+    res.status(403).json({
+      success: false,
+      error: 'Forbidden. Admin privileges required.',
+    });
+  }
+};
