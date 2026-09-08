@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import { query } from '../config/db.js';
+import { normalizeDepartment, Department } from '../validators/index.js';
 
 export interface IUser {
   id: string;
@@ -13,7 +14,7 @@ export interface IUser {
   age?: number;
   phone?: string;
   joiningDate?: string;
-  department?: string;
+  department?: Department | string;
   avatarUrl?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -32,7 +33,7 @@ export class UserModel implements IUser {
   age?: number;
   phone?: string;
   joiningDate?: string;
-  department?: string;
+  department?: Department | string;
   avatarUrl?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -48,7 +49,8 @@ export class UserModel implements IUser {
     this.age = data.age !== undefined && data.age !== null ? Number(data.age) : undefined;
     this.phone = data.phone || undefined;
     this.joiningDate = data.joiningDate || undefined;
-    this.department = data.department || undefined;
+    const normDept = data.department ? normalizeDepartment(data.department) : null;
+    this.department = normDept || (this.role === 'employee' ? 'sales' : undefined);
     this.avatarUrl = data.avatarUrl || undefined;
     this.createdAt = data.createdAt ? new Date(data.createdAt) : new Date();
     this.updatedAt = data.updatedAt ? new Date(data.updatedAt) : new Date();

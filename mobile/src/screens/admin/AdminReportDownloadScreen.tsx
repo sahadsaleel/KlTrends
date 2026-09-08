@@ -13,20 +13,21 @@ import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Text } from '../components/common/Text';
-import { AppHeader } from '../components/common/AppHeader';
-import { BottomNavBar, TabName } from '../components/common/BottomNavBar';
-import { spacing, borderRadius } from '../theme/spacing';
-import { colors } from '../theme/colors';
-import { AppAlert as Alert } from '../utils/appAlert';
-import { useAuth } from '../hooks/useAuth';
-import { adminApi } from '../api/admin';
-import { RootStackParamList } from '../navigation/RootNavigator';
+import { Text } from '../../components/common/Text';
+import { AppHeader } from '../../components/common/AppHeader';
+import { BottomNavBar, TabName } from '../../components/common/BottomNavBar';
+import { spacing, borderRadius } from '../../theme/spacing';
+import { colors } from '../../theme/colors';
+import { AppAlert as Alert } from '../../utils/appAlert';
+import { useAuth } from '../../hooks/useAuth';
+import { adminApi } from '../../api/admin';
+import { RootStackParamList } from '../../navigation/RootNavigator';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AdminReportDownload'>;
 
 type Period = 'daily' | 'monthly' | 'yearly';
 type Format = 'pdf' | 'excel';
+type ReportDepartment = 'all' | 'sales' | 'manager' | 'packaging' | 'media';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -60,6 +61,7 @@ export const AdminReportDownloadScreen: React.FC<Props> = ({ navigation }) => {
   // State
   const [period, setPeriod] = useState<Period>('monthly');
   const [format, setFormat] = useState<Format>('pdf');
+  const [department, setDepartment] = useState<ReportDepartment>('all');
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
@@ -88,7 +90,7 @@ export const AdminReportDownloadScreen: React.FC<Props> = ({ navigation }) => {
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      const params: { date?: string; month?: number; year?: number } = {};
+      const params: { date?: string; month?: number; year?: number; department?: ReportDepartment } = { department };
 
       if (period === 'daily') {
         params.date = selectedDate;
@@ -340,6 +342,34 @@ export const AdminReportDownloadScreen: React.FC<Props> = ({ navigation }) => {
           )}
         </View>
 
+        {/* Department Selector */}
+        <View style={styles.card}>
+          <View style={styles.cardHeaderRow}>
+            <Ionicons name="business-outline" size={18} color={colors.textSecondary} style={{ marginRight: 8 }} />
+            <Text style={styles.sectionTitle}>Department</Text>
+          </View>
+          <View style={styles.departmentRow}>
+            {([
+              ['all', 'All'],
+              ['sales', 'Sales'],
+              ['manager', 'Manager'],
+              ['packaging', 'Packaging'],
+              ['media', 'Media'],
+            ] as const).map(([value, label]) => (
+              <TouchableOpacity
+                key={value}
+                style={[styles.departmentChip, department === value && styles.departmentChipActive]}
+                onPress={() => setDepartment(value)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.departmentChipText, department === value && styles.departmentChipTextActive]}>
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
         {/* ─── Format Selector ─── */}
         <View style={styles.card}>
           <View style={styles.cardHeaderRow}>
@@ -457,6 +487,12 @@ export const AdminReportDownloadScreen: React.FC<Props> = ({ navigation }) => {
           </View>
           <View style={[styles.summaryDivider, { backgroundColor: fc.border }]} />
           <View style={styles.summaryRow}>
+            <Ionicons name="business-outline" size={15} color={colors.textSecondary} style={{ marginRight: 6 }} />
+            <Text style={styles.summaryLabel}>Department</Text>
+            <Text style={styles.summaryValue}>{department === 'all' ? 'All Departments' : department.charAt(0).toUpperCase() + department.slice(1)}</Text>
+          </View>
+          <View style={[styles.summaryDivider, { backgroundColor: fc.border }]} />
+          <View style={styles.summaryRow}>
             <Ionicons name="document-outline" size={15} color={colors.textSecondary} style={{ marginRight: 6 }} />
             <Text style={styles.summaryLabel}>Format</Text>
             <Text style={[styles.summaryValue, { color: fc.primary }]}>
@@ -507,6 +543,33 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.lg,
+  },
+  departmentRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  departmentChip: {
+    minHeight: 48,
+    paddingHorizontal: spacing.md,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    backgroundColor: colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  departmentChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  departmentChipText: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  departmentChipTextActive: {
+    color: '#FFFFFF',
   },
 
   // Hero Banner

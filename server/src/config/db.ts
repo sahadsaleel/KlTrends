@@ -54,13 +54,14 @@ const initTables = async (connection: mysql.Connection | mysql.Pool): Promise<vo
       age INT NULL,
       phone VARCHAR(50) NULL,
       joiningDate VARCHAR(50) NULL,
-      department VARCHAR(100) NULL,
+      department ENUM('sales', 'manager', 'packaging', 'media') NOT NULL DEFAULT 'sales',
       avatarUrl TEXT NULL,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       INDEX idx_user_role (role),
       INDEX idx_user_email (email),
-      INDEX idx_user_username (username)
+      INDEX idx_user_username (username),
+      INDEX idx_user_department (department)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   `);
 
@@ -195,6 +196,158 @@ const initTables = async (connection: mysql.Connection | mysql.Pool): Promise<vo
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   `);
 
+  // 7. Product Returns table (Manager Department)
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS product_returns (
+      id VARCHAR(36) PRIMARY KEY,
+      userId VARCHAR(36) NOT NULL,
+      employeeId VARCHAR(100) NULL,
+      employeeName VARCHAR(255) NULL,
+      department VARCHAR(50) NOT NULL DEFAULT 'manager',
+      date VARCHAR(10) NOT NULL,
+      orderSource ENUM('kltrends', 'klindia') NOT NULL,
+      returnQuantity INT NOT NULL,
+      notes TEXT NULL,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_pr_date (date),
+      INDEX idx_pr_source (orderSource),
+      INDEX idx_pr_user (userId),
+      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `);
+
+  // 8. Daily Expenses table (Manager Department)
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS daily_expenses (
+      id VARCHAR(36) PRIMARY KEY,
+      userId VARCHAR(36) NOT NULL,
+      employeeId VARCHAR(100) NULL,
+      employeeName VARCHAR(255) NULL,
+      department VARCHAR(50) NOT NULL DEFAULT 'manager',
+      date VARCHAR(10) NOT NULL,
+      category VARCHAR(100) NOT NULL,
+      customCategoryName VARCHAR(255) NULL,
+      amount DOUBLE NOT NULL,
+      description TEXT NULL,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_de_date (date),
+      INDEX idx_de_category (category),
+      INDEX idx_de_user (userId),
+      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `);
+
+  // 9. Media activity table (Media Department)
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS media_activities (
+      id VARCHAR(36) PRIMARY KEY,
+      userId VARCHAR(36) NOT NULL,
+      employeeId VARCHAR(100) NULL,
+      employeeName VARCHAR(255) NULL,
+      department VARCHAR(50) NOT NULL DEFAULT 'media',
+      activityType ENUM('video-shoot', 'video-out') NOT NULL,
+      date VARCHAR(10) NOT NULL,
+      totalVideos INT NOT NULL,
+      notes TEXT NULL,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_ma_type_date (activityType, date),
+      INDEX idx_ma_user (userId),
+      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `);
+
+  // 10. Packing records table (Packaging Department)
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS packing_records (
+      id VARCHAR(36) PRIMARY KEY,
+      userId VARCHAR(36) NOT NULL,
+      employeeId VARCHAR(100) NULL,
+      employeeName VARCHAR(255) NULL,
+      department VARCHAR(50) NOT NULL DEFAULT 'packaging',
+      date VARCHAR(10) NOT NULL,
+      orderSource ENUM('kltrends', 'klindia') NOT NULL,
+      ordersPacked INT NOT NULL,
+      notes TEXT NULL,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_pack_date_source (date, orderSource),
+      INDEX idx_pack_user (userId),
+      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `);
+
+  // 11. Migration: Review & update existing employees with old departments to the 4 allowed departments
+  try {
+    // Check if department column exists
+    const [colRows] = await connection.query<any[]>(
+      `SHOW COLUMNS FROM users LIKE 'department'`
+    );
+    if (!colRows || colRows.length === 0) {
+      await connection.query(
+        `ALTER TABLE users ADD COLUMN department VARCHAR(50) NOT NULL DEFAULT 'sales'`
+      );
+    }
+
+    // Migrate old department values to valid lowercase departments:
+    // sales, manager, packaging, media
+    await connection.query(`
+      UPDATE users
+      SET department = 'sales'
+      WHERE department IS NULL
+         OR department = ''
+         OR LOWER(department) IN ('sales', 'sales & marketing', 'general', 'engineering & development', 'human resources', 'finance & accounting', 'customer support')
+         OR LOWER(department) LIKE '%sale%'
+    `);
+
+    await connection.query(`
+      UPDATE users
+      SET department = 'manager'
+      WHERE LOWER(department) IN ('manager', 'management')
+         OR LOWER(department) LIKE '%manag%'
+    `);
+
+    await connection.query(`
+      UPDATE users
+      SET department = 'packaging'
+      WHERE LOWER(department) IN ('packaging', 'operations & logistics', 'operations', 'logistics')
+         OR LOWER(department) LIKE '%pack%'
+         OR LOWER(department) LIKE '%logist%'
+    `);
+
+    await connection.query(`
+      UPDATE users
+      SET department = 'media'
+      WHERE LOWER(department) IN ('media', 'product design', 'design', 'content', 'marketing')
+         OR LOWER(department) LIKE '%media%'
+    `);
+
+    // Catch-all: update any remaining unmapped old departments to 'sales'
+    await connection.query(`
+      UPDATE users
+      SET department = 'sales'
+      WHERE department NOT IN ('sales', 'manager', 'packaging', 'media')
+    `);
+
+    // Ensure the department column is constrained to ENUM('sales', 'manager', 'packaging', 'media') NOT NULL DEFAULT 'sales'
+    await connection.query(`
+      ALTER TABLE users MODIFY COLUMN department ENUM('sales', 'manager', 'packaging', 'media') NOT NULL DEFAULT 'sales'
+    `);
+
+    // Ensure index on department exists
+    const [idxRows] = await connection.query<any[]>(
+      `SHOW INDEX FROM users WHERE Key_name = 'idx_user_department'`
+    );
+    if (!idxRows || idxRows.length === 0) {
+      await connection.query(`ALTER TABLE users ADD INDEX idx_user_department (department)`);
+    }
+
+    console.log('[Database] Department schema and existing records verified: allowed values (sales, manager, packaging, media).');
+  } catch (migErr: any) {
+    console.warn('[Database] Department schema migration notice:', migErr?.message || migErr);
+  }
 };
 
 /**

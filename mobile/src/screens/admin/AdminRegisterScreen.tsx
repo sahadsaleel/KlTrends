@@ -13,15 +13,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useForm, Controller } from 'react-hook-form';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Text } from '../components/common/Text';
-import { Input } from '../components/common/Input';
-import { Button } from '../components/common/Button';
-import { colors } from '../theme/colors';
-import { spacing, borderRadius } from '../theme/spacing';
-import { authApi } from '../api/auth';
-import { useAuth } from '../hooks/useAuth';
-import { User } from '../types';
-import { RootStackParamList } from '../navigation/RootNavigator';
+import { Text } from '../../components/common/Text';
+import { Input } from '../../components/common/Input';
+import { Button } from '../../components/common/Button';
+import { colors } from '../../theme/colors';
+import { spacing, borderRadius } from '../../theme/spacing';
+import { authApi } from '../../api/auth';
+import { useAuth } from '../../hooks/useAuth';
+import { User } from '../../types';
+import { RootStackParamList } from '../../navigation/RootNavigator';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AdminRegister'>;
 
@@ -221,7 +221,7 @@ export const AdminRegisterScreen: React.FC<Props> = ({ navigation }) => {
             {/* Brand Logo Header */}
             <View style={styles.logoWrapper}>
               <Image
-                source={require('../../assets/logo.png')}
+                source={require('../../../assets/logo.png')}
                 style={styles.logoImage}
                 resizeMode="contain"
               />

@@ -7,6 +7,7 @@ import { sendOtpEmail } from '../services/emailService.js';
 import { generateToken } from '../utils/jwt.js';
 import { AuthenticatedRequest } from '../types/index.js';
 import { uploadProfileImage } from '../services/cloudinaryService.js';
+import { isValidDepartment, normalizeDepartment, VALID_DEPARTMENTS } from '../validators/index.js';
 
 const queueOtpEmail = (options: Parameters<typeof sendOtpEmail>[0]): void => {
   void sendOtpEmail(options).catch((error) => console.error('[Email] OTP delivery failed:', error));
@@ -559,6 +560,23 @@ export const registerEmployee = async (
       return;
     }
 
+    if (!department || typeof department !== 'string' || !department.trim()) {
+      res.status(400).json({
+        success: false,
+        error: 'Department is required. Please select a valid department.',
+      });
+      return;
+    }
+
+    const normDept = normalizeDepartment(department);
+    if (!normDept) {
+      res.status(400).json({
+        success: false,
+        error: `Invalid department. Allowed departments are: ${VALID_DEPARTMENTS.join(', ')}`,
+      });
+      return;
+    }
+
     const cleanFullName = fullName.trim();
     const cleanUsername = (username || fullName || email.split('@')[0]).trim();
     const cleanEmail = email.toLowerCase().trim();
@@ -636,7 +654,7 @@ export const registerEmployee = async (
       email: cleanEmail,
       password,
       role: 'employee',
-      department: department?.trim() || 'General',
+      department: normDept,
       phone: phone?.trim() || '',
     });
 
@@ -644,6 +662,7 @@ export const registerEmployee = async (
       userId: newEmployee.id,
       email: newEmployee.email,
       role: newEmployee.role,
+      department: newEmployee.department,
     });
 
     res.status(201).json({
@@ -716,6 +735,7 @@ export const loginEmployee = async (
       userId: user.id,
       email: user.email,
       role: user.role,
+      department: user.department,
     });
 
     res.status(200).json({
@@ -1018,7 +1038,16 @@ export const updateProfile = async (
     if (phone !== undefined) user.phone = phone.trim();
     if (employeeId !== undefined) user.employeeId = employeeId.trim();
     if (joiningDate !== undefined) user.joiningDate = joiningDate.trim();
-    if (department !== undefined) user.department = department.trim();
+    if (department !== undefined) {
+      const requestedDepartment = typeof department === 'string' ? department.trim().toLowerCase() : '';
+      if (requestedDepartment !== String(user.department || '').toLowerCase()) {
+        res.status(403).json({
+          success: false,
+          error: 'Department cannot be changed after account creation.',
+        });
+        return;
+      }
+    }
     if (avatarUrl !== undefined) {
       let finalAvatarUrl = avatarUrl.trim();
       if (

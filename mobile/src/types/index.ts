@@ -1,3 +1,6 @@
+export const VALID_DEPARTMENTS = ['sales', 'manager', 'packaging', 'media'] as const;
+export type Department = (typeof VALID_DEPARTMENTS)[number];
+
 export interface User {
   id: string;
   name?: string;
@@ -9,7 +12,7 @@ export interface User {
   age?: number;
   phone?: string;
   joiningDate?: string;
-  department?: string;
+  department?: Department | string;
   designation?: string;
   avatarUrl?: string;
 }

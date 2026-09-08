@@ -9,18 +9,19 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { AppAlert as Alert } from '../utils/appAlert';
+import { AppAlert as Alert } from '../../../utils/appAlert';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Text } from '../components/common/Text';
-import { AppHeader } from '../components/common/AppHeader';
-import { BottomNavBar, TabName } from '../components/common/BottomNavBar';
-import { Report, reportsApi } from '../api/reports';
-import { RootStackParamList } from '../navigation/RootNavigator';
-import { colors } from '../theme/colors';
-import { borderRadius, spacing } from '../theme/spacing';
-import { useAuth } from '../hooks/useAuth';
+import { Text } from '../../../components/common/Text';
+import { AppHeader } from '../../../components/common/AppHeader';
+import { BottomNavBar, TabName } from '../../../components/common/BottomNavBar';
+import { Report, reportsApi } from '../../../api/reports';
+import { RootStackParamList } from '../../../navigation/RootNavigator';
+import { colors } from '../../../theme/colors';
+import { borderRadius, spacing } from '../../../theme/spacing';
+import { useAuth } from '../../../hooks/useAuth';
+import { useDepartmentGuard } from '../../../hooks/useDepartmentGuard';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddEditReport'>;
 
@@ -31,6 +32,7 @@ const parseCount = (value: string) => Math.max(0, parseInt(value, 10) || 0);
 const parseAmount = (value: string) => Math.max(0, Number(value.replace(/,/g, '')) || 0);
 
 export const AddEditReportScreen: React.FC<Props> = ({ route, navigation }) => {
+  const isAuthorized = useDepartmentGuard('sales', navigation);
   const { user } = useAuth();
   const existing: Report | undefined = route.params?.report;
 
@@ -110,6 +112,12 @@ export const AddEditReportScreen: React.FC<Props> = ({ route, navigation }) => {
         Home: 'Home',
         Attendance: 'Attendance',
         Reports: 'SalesReports',
+        SalesReports: 'SalesReports',
+        AddReport: 'AddEditReport',
+        ProductReturns: 'ProductReturns',
+        DailyExpenses: 'DailyExpenses',
+        PackagingDuties: 'PackagingDuties',
+        MediaDuties: 'MediaDuties',
         Profile: 'EditProfile',
       };
       navigation.navigate(destinations[tab] as any);
@@ -153,6 +161,10 @@ export const AddEditReportScreen: React.FC<Props> = ({ route, navigation }) => {
       </View>
     </View>
   );
+
+  if (!isAuthorized) {
+    return null;
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -278,7 +290,7 @@ export const AddEditReportScreen: React.FC<Props> = ({ route, navigation }) => {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <BottomNavBar activeTab="Reports" onNavigate={navigate} />
+      <BottomNavBar activeTab={existing ? 'SalesReports' : 'AddReport'} onNavigate={navigate} />
     </SafeAreaView>
   );
 };

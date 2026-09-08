@@ -10,33 +10,27 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Text } from '../components/common/Text';
-import { AppHeader } from '../components/common/AppHeader';
-import { BottomNavBar, TabName } from '../components/common/BottomNavBar';
-import { colors } from '../theme/colors';
-import { AppAlert as Alert } from '../utils/appAlert';
-import { spacing, borderRadius } from '../theme/spacing';
-import { useAuth } from '../hooks/useAuth';
-import { authApi } from '../api/auth';
-import { RootStackParamList } from '../navigation/RootNavigator';
+import { Text } from '../../components/common/Text';
+import { AppHeader } from '../../components/common/AppHeader';
+import { BottomNavBar, TabName } from '../../components/common/BottomNavBar';
+import { colors } from '../../theme/colors';
+import { AppAlert as Alert } from '../../utils/appAlert';
+import { spacing, borderRadius } from '../../theme/spacing';
+import { useAuth } from '../../hooks/useAuth';
+import { authApi } from '../../api/auth';
+import { RootStackParamList } from '../../navigation/RootNavigator';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EditProfile'>;
 
-const DEPARTMENTS = [
-  'Engineering & Development',
-  'Sales & Marketing',
-  'Human Resources',
-  'Operations & Logistics',
-  'Finance & Accounting',
-  'Customer Support',
-  'Product Design',
-];
+const getDepartmentLabel = (dept?: string): string => {
+  if (!dept) return 'Not assigned';
+  return dept.charAt(0).toUpperCase() + dept.slice(1);
+};
 
 export const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
   const { user, login, logout } = useAuth();
@@ -52,7 +46,6 @@ export const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
   const [avatarUrl, setAvatarUrl] = useState<string>(user?.avatarUrl || '');
 
   const [saving, setSaving] = useState<boolean>(false);
-  const [deptModalVisible, setDeptModalVisible] = useState<boolean>(false);
 
   // Initialize form with logged in user data if available
   useEffect(() => {
@@ -131,7 +124,6 @@ export const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
       phone: phone.trim(),
       employeeId: employeeId.trim(),
       joiningDate: joiningDate.trim(),
-      department: department.trim(),
       avatarUrl: avatarUrl.trim(),
     };
 
@@ -139,7 +131,7 @@ export const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
     setSaving(false);
 
     if (response.success && response.user) {
-      const token = await import('../services/storage').then((s) => s.storage.getToken());
+      const token = await import('../../services/storage').then((s) => s.storage.getToken());
       if (token) {
         await login(response.user, token);
       }
@@ -169,7 +161,23 @@ export const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
           navigation.navigate('Attendance');
           break;
         case 'Reports':
-          navigation.navigate('SalesReports');
+        case 'SalesReports':
+          navigation.navigate('SalesReports' as any);
+          break;
+        case 'AddReport':
+          navigation.navigate('AddEditReport' as any);
+          break;
+        case 'ProductReturns':
+          navigation.navigate('ProductReturns' as any);
+          break;
+        case 'DailyExpenses':
+          navigation.navigate('DailyExpenses' as any);
+          break;
+        case 'PackagingDuties':
+          navigation.navigate('PackagingDuties' as any);
+          break;
+        case 'MediaDuties':
+          navigation.navigate('MediaDuties' as any);
           break;
         case 'Profile':
           break;
@@ -335,21 +343,17 @@ export const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.fieldLabel}>
               Department <Text style={styles.requiredAsterisk}>*</Text>
             </Text>
-            <TouchableOpacity
-              style={[styles.inputWrapper, styles.dropdownPicker]}
-              onPress={() => setDeptModalVisible(true)}
-              activeOpacity={0.7}
-            >
+            <View style={[styles.inputWrapper, styles.dropdownPicker]}>
               <Text
                 style={[
                   styles.dropdownText,
-                  !department && { color: colors.textMuted },
                 ]}
               >
-                {department || 'Select a department...'}
+                {getDepartmentLabel(department)}
               </Text>
-              <Ionicons name="chevron-down" size={18} color="#6B7280" />
-            </TouchableOpacity>
+              <Ionicons name="lock-closed-outline" size={17} color="#6B7280" />
+            </View>
+            <Text style={styles.inputHelpText}>Department is assigned during account creation.</Text>
           </View>
 
           {/* Save Button Row */}
@@ -377,42 +381,6 @@ export const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* Department Selection Modal */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={deptModalVisible}
-        onRequestClose={() => setDeptModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Department</Text>
-              <TouchableOpacity onPress={() => setDeptModalVisible(false)}>
-                <Ionicons name="close-circle" size={26} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={{ maxHeight: 300, width: '100%', marginTop: spacing.md }}>
-              {DEPARTMENTS.map((dept, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.deptOptionRow}
-                  onPress={() => {
-                    setDepartment(dept);
-                    setDeptModalVisible(false);
-                  }}
-                >
-                  <Text style={styles.deptOptionText}>{dept}</Text>
-                  {department === dept && (
-                    <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
 
       <BottomNavBar activeTab="Profile" onNavigate={handleNavigation} />
     </SafeAreaView>

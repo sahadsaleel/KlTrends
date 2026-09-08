@@ -4,6 +4,7 @@ import { User } from '../models/User.js';
 import { Attendance } from '../models/Attendance.js';
 import { Report } from '../models/Report.js';
 import { uploadProfileImage } from '../services/cloudinaryService.js';
+import { normalizeDepartment, VALID_DEPARTMENTS } from '../validators/index.js';
 
 // Helper: format YYYY-MM-DD
 const formatDateString = (date: Date): string => {
@@ -409,6 +410,23 @@ export const createEmployee = async (req: AuthenticatedRequest, res: Response): 
       }
     }
 
+    if (!department || typeof department !== 'string' || !department.trim()) {
+      res.status(400).json({
+        success: false,
+        error: 'Department is required. Please select a valid department.',
+      });
+      return;
+    }
+
+    const normDept = normalizeDepartment(department);
+    if (!normDept) {
+      res.status(400).json({
+        success: false,
+        error: `Invalid department. Allowed departments are: ${VALID_DEPARTMENTS.join(', ')}`,
+      });
+      return;
+    }
+
     const newEmployee = await User.create({
       fullName: fullName.trim(),
       username: fullName.trim(),
@@ -416,7 +434,7 @@ export const createEmployee = async (req: AuthenticatedRequest, res: Response): 
       email: cleanEmail,
       password: password && password.length >= 6 ? password : 'Password123!',
       role: 'employee',
-      department: department?.trim() || 'General',
+      department: normDept,
       phone: phone?.trim() || '',
       age: age ? Number(age) : undefined,
       joiningDate: joiningDate?.trim() || formatDateString(new Date()),
@@ -489,8 +507,18 @@ export const updateEmployee = async (req: AuthenticatedRequest, res: Response): 
     }
 
     if (fullName !== undefined) user.fullName = fullName.trim();
-    if (department !== undefined) user.department = department.trim();
     if (phone !== undefined) user.phone = phone.trim();
+    if (department !== undefined) {
+      const normDept = normalizeDepartment(department);
+      if (!normDept) {
+        res.status(400).json({
+          success: false,
+          error: `Invalid department. Allowed departments are: ${VALID_DEPARTMENTS.join(', ')}`,
+        });
+        return;
+      }
+      user.department = normDept;
+    }
     if (age !== undefined) user.age = Number(age) || 0;
     if (joiningDate !== undefined) user.joiningDate = joiningDate.trim();
     if (avatarUrl !== undefined) {

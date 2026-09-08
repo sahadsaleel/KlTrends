@@ -4,6 +4,7 @@ export interface UserPayload {
   userId: string;
   email: string;
   role: 'admin' | 'employee' | 'manager';
+  department?: string;
 }
 
 export interface AuthenticatedRequest extends Request {

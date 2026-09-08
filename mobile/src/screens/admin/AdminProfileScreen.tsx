@@ -15,15 +15,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Text } from '../components/common/Text';
-import { AppHeader } from '../components/common/AppHeader';
-import { BottomNavBar, TabName } from '../components/common/BottomNavBar';
-import { spacing, borderRadius } from '../theme/spacing';
-import { colors } from '../theme/colors';
-import { AppAlert as Alert } from '../utils/appAlert';
-import { useAuth } from '../hooks/useAuth';
-import { authApi } from '../api/auth';
-import { RootStackParamList } from '../navigation/RootNavigator';
+import { Text } from '../../components/common/Text';
+import { AppHeader } from '../../components/common/AppHeader';
+import { BottomNavBar, TabName } from '../../components/common/BottomNavBar';
+import { spacing, borderRadius } from '../../theme/spacing';
+import { colors } from '../../theme/colors';
+import { AppAlert as Alert } from '../../utils/appAlert';
+import { useAuth } from '../../hooks/useAuth';
+import { authApi } from '../../api/auth';
+import { RootStackParamList } from '../../navigation/RootNavigator';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AdminProfile'>;
 
@@ -98,7 +98,7 @@ export const AdminProfileScreen: React.FC<Props> = ({ navigation }) => {
     setSaving(false);
 
     if (response.success && response.user) {
-      const token = await import('../services/storage').then((s) => s.storage.getToken());
+      const token = await import('../../services/storage').then((s) => s.storage.getToken());
       if (token) {
         await login(response.user, token);
       }

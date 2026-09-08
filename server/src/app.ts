@@ -7,6 +7,9 @@ import attendanceRoutes from './routes/attendanceRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import managerRoutes from './routes/managerRoutes.js';
+import mediaRoutes from './routes/mediaRoutes.js';
+import packagingRoutes from './routes/packagingRoutes.js';
 
 import { errorHandler } from './middleware/errorHandler.js';
 
@@ -26,6 +29,9 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/manager', managerRoutes);
+app.use('/api/media', mediaRoutes);
+app.use('/api/packaging', packagingRoutes);
 
 app.use(errorHandler);
 

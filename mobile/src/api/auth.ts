@@ -138,7 +138,7 @@ export const authApi = {
     employeeId?: string;
     email: string;
     password: string;
-    department?: string;
+    department: string;
     phone?: string;
     otp?: string;
   }): Promise<AuthResponse> => {
@@ -250,7 +250,6 @@ export const authApi = {
     phone?: string;
     employeeId?: string;
     joiningDate?: string;
-    department?: string;
     avatarUrl?: string;
   }): Promise<AuthResponse> => {
     try {

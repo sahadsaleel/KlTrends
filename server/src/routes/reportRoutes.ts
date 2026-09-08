@@ -8,12 +8,13 @@ import {
   deleteReport,
 } from '../controllers/reportController.js';
 
-import { protect } from '../middleware/authMiddleware.js';
+import { protect, requireDepartment } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
-// All report routes require authentication
+// All report routes require authentication + Sales department or Admin role
 router.use(protect);
+router.use(requireDepartment('sales'));
 
 // GET /api/reports
 router.get(

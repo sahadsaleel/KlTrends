@@ -11,14 +11,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { Text } from '../components/common/Text';
-import { AppHeader } from '../components/common/AppHeader';
-import { BottomNavBar, TabName } from '../components/common/BottomNavBar';
-import { Report, ReportSummary, reportsApi } from '../api/reports';
-import { RootStackParamList } from '../navigation/RootNavigator';
-import { colors } from '../theme/colors';
-import { borderRadius, spacing } from '../theme/spacing';
-import { useAuth } from '../hooks/useAuth';
+import { Text } from '../../../components/common/Text';
+import { AppHeader } from '../../../components/common/AppHeader';
+import { BottomNavBar, TabName } from '../../../components/common/BottomNavBar';
+import { Report, ReportSummary, reportsApi } from '../../../api/reports';
+import { RootStackParamList } from '../../../navigation/RootNavigator';
+import { colors } from '../../../theme/colors';
+import { borderRadius, spacing } from '../../../theme/spacing';
+import { useAuth } from '../../../hooks/useAuth';
+import { useDepartmentGuard } from '../../../hooks/useDepartmentGuard';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SalesReports'>;
 
@@ -32,7 +33,8 @@ const displayDate = (date: string) =>
 
 const money = (value: number) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
 
-export const SalesReportsScreen: React.FC<Props> = ({ navigation }) => {
+export const SalesReportScreen: React.FC<Props> = ({ navigation }) => {
+  const isAuthorized = useDepartmentGuard('sales', navigation);
   const { user } = useAuth();
   const [reports, setReports] = useState<Report[]>([]);
   const [summary, setSummary] = useState<ReportSummary | null>(null);
@@ -40,6 +42,7 @@ export const SalesReportsScreen: React.FC<Props> = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
+    if (!isAuthorized) return;
     const result = await reportsApi.getAll();
     if (result.success && result.data) {
       setReports(result.data.reports || []);
@@ -47,12 +50,14 @@ export const SalesReportsScreen: React.FC<Props> = ({ navigation }) => {
     }
     setLoading(false);
     setRefreshing(false);
-  }, []);
+  }, [isAuthorized]);
 
   useFocusEffect(
     useCallback(() => {
-      load();
-    }, [load])
+      if (isAuthorized) {
+        load();
+      }
+    }, [load, isAuthorized])
   );
 
   const navigate = useCallback(
@@ -61,6 +66,12 @@ export const SalesReportsScreen: React.FC<Props> = ({ navigation }) => {
         Home: 'Home',
         Attendance: 'Attendance',
         Reports: 'SalesReports',
+        SalesReports: 'SalesReports',
+        AddReport: 'AddEditReport',
+        ProductReturns: 'ProductReturns',
+        DailyExpenses: 'DailyExpenses',
+        PackagingDuties: 'PackagingDuties',
+        MediaDuties: 'MediaDuties',
         Profile: 'EditProfile',
       };
       navigation.navigate(destinations[tab] as any);
@@ -71,6 +82,10 @@ export const SalesReportsScreen: React.FC<Props> = ({ navigation }) => {
   const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(
     user?.fullName || user?.username || 'User'
   )}&background=70007C&color=fff&size=200`;
+
+  if (!isAuthorized) {
+    return null;
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -543,3 +558,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+
+export const SalesReportsScreen = SalesReportScreen;

@@ -299,7 +299,7 @@ export const adminApi = {
   downloadReport: async (
     period: 'daily' | 'monthly' | 'yearly',
     format: 'pdf' | 'excel',
-    params: { date?: string; month?: number; year?: number }
+    params: { date?: string; month?: number; year?: number; department?: 'all' | 'sales' | 'manager' | 'packaging' | 'media' }
   ): Promise<{ success: boolean; data?: string; filename?: string; mimeType?: string; error?: string }> => {
     try {
       const response = await apiClient.get('/admin/reports/export', {

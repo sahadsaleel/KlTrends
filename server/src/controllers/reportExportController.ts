@@ -4,6 +4,10 @@ import PDFDocument from 'pdfkit';
 import { AuthenticatedRequest } from '../types/index.js';
 import { query } from '../config/db.js';
 import { Report } from '../models/Report.js';
+import { ProductReturn } from '../models/ProductReturn.js';
+import { DailyExpense } from '../models/DailyExpense.js';
+import { PackingRecord } from '../models/PackingRecord.js';
+import { MediaActivity } from '../models/MediaActivity.js';
 
 type ExportRow = {
   employeeName: string;
@@ -17,6 +21,9 @@ type ExportRow = {
   prepaidOrders: number;
   completedOrders: number;
   cancelledOrders: number;
+  activityType?: string;
+  orderSource?: string;
+  category?: string;
 };
 
 const formatDate = (date: Date) => date.toISOString().slice(0, 10);
@@ -50,7 +57,9 @@ const range = (params: Record<string, any>) => {
   throw new Error('Invalid period. Use daily, monthly, or yearly.');
 };
 
-const columns: { header: string; key: keyof ExportRow; width: number; align?: 'left' | 'center' | 'right' }[] = [
+type ExportColumn = { header: string; key: keyof ExportRow; width: number; align?: 'left' | 'center' | 'right' };
+
+const salesColumns: ExportColumn[] = [
   { header: 'Employee Name', key: 'employeeName', width: 110, align: 'left' },
   { header: 'Emp ID', key: 'employeeId', width: 55, align: 'center' },
   { header: 'Department', key: 'department', width: 70, align: 'left' },
@@ -64,7 +73,33 @@ const columns: { header: string; key: keyof ExportRow; width: number; align?: 'l
   { header: 'Cancelled', key: 'cancelledOrders', width: 55, align: 'right' },
 ];
 
-const rowsFor = async (start: string, end: string): Promise<ExportRow[]> => {
+const columnsFor = (department: string): ExportColumn[] => {
+  if (department === 'manager') {
+    return [
+      { header: 'Employee Name', key: 'employeeName', width: 110 }, { header: 'Emp ID', key: 'employeeId', width: 55 },
+      { header: 'Department', key: 'department', width: 70 }, { header: 'Date', key: 'date', width: 60 },
+      { header: 'Record Type', key: 'category', width: 75 }, { header: 'Amount (Rs)', key: 'totalSalesAmount', width: 75, align: 'right' },
+      { header: 'Quantity', key: 'totalOrders', width: 60, align: 'right' },
+    ];
+  }
+  if (department === 'packaging') {
+    return [
+      { header: 'Employee Name', key: 'employeeName', width: 110 }, { header: 'Emp ID', key: 'employeeId', width: 55 },
+      { header: 'Department', key: 'department', width: 70 }, { header: 'Date', key: 'date', width: 60 },
+      { header: 'Order Source', key: 'orderSource', width: 80 }, { header: 'Orders Packed', key: 'totalOrders', width: 75, align: 'right' },
+    ];
+  }
+  if (department === 'media') {
+    return [
+      { header: 'Employee Name', key: 'employeeName', width: 110 }, { header: 'Emp ID', key: 'employeeId', width: 55 },
+      { header: 'Department', key: 'department', width: 70 }, { header: 'Date', key: 'date', width: 60 },
+      { header: 'Activity', key: 'activityType', width: 80 }, { header: 'Videos', key: 'totalOrders', width: 65, align: 'right' },
+    ];
+  }
+  return salesColumns;
+};
+
+const rowsFor = async (start: string, end: string, department?: string): Promise<ExportRow[]> => {
   const reports = await Report.findInDateRange(start, end);
   if (!reports.length) return [];
   const ids = [...new Set(reports.map((report) => report.userId))];
@@ -76,6 +111,9 @@ const rowsFor = async (start: string, end: string): Promise<ExportRow[]> => {
   const usersById = new Map(users.map((user) => [user.id, user]));
   return reports.map((report) => {
     const user = usersById.get(report.userId);
+    if (department && department !== 'all' && user?.department?.toLowerCase() !== department) {
+      return null;
+    }
     return {
       employeeName: user?.fullName || user?.username || 'Unknown',
       employeeId: user?.employeeId || '--',
@@ -89,7 +127,45 @@ const rowsFor = async (start: string, end: string): Promise<ExportRow[]> => {
       completedOrders: Number(report.completedOrders) || 0,
       cancelledOrders: Number(report.cancelledOrders) || 0,
     };
-  });
+  }).filter((row): row is ExportRow => row !== null);
+};
+
+const activityRowsFor = async (start: string, end: string, department: string): Promise<ExportRow[]> => {
+  if (department === 'manager') {
+    const [returns, expenses] = await Promise.all([
+      ProductReturn.findFiltered({ startDate: start, endDate: end }),
+      DailyExpense.findFiltered({ startDate: start, endDate: end }),
+    ]);
+    return [
+      ...returns.map((record) => ({
+        employeeName: record.employeeName || '--', employeeId: record.employeeId || '--', department: 'manager', date: record.date,
+        totalSalesAmount: 0, whatsappEnquiries: 0, totalOrders: record.returnQuantity, codOrders: 0, prepaidOrders: 0, completedOrders: 0, cancelledOrders: 0, category: 'Product Return',
+      })),
+      ...expenses.map((record) => ({
+        employeeName: record.employeeName || '--', employeeId: record.employeeId || '--', department: 'manager', date: record.date,
+        totalSalesAmount: record.amount, whatsappEnquiries: 0, totalOrders: 0, codOrders: 0, prepaidOrders: 0, completedOrders: 0, cancelledOrders: 0, category: record.category,
+      })),
+    ];
+  }
+
+  if (department === 'packaging') {
+    const records = await PackingRecord.findFiltered({ startDate: start, endDate: end });
+    return records.map((record) => ({
+      employeeName: record.employeeName || '--', employeeId: record.employeeId || '--', department: 'packaging', date: record.date,
+      totalSalesAmount: 0, whatsappEnquiries: 0, totalOrders: record.ordersPacked, codOrders: record.orderSource === 'kltrends' ? record.ordersPacked : 0,
+      prepaidOrders: record.orderSource === 'klindia' ? record.ordersPacked : 0, completedOrders: 0, cancelledOrders: 0, orderSource: record.orderSource,
+    }));
+  }
+
+  const [shoots, out] = await Promise.all([
+    MediaActivity.findFiltered({ activityType: 'video-shoot', startDate: start, endDate: end }),
+    MediaActivity.findFiltered({ activityType: 'video-out', startDate: start, endDate: end }),
+  ]);
+  return [...shoots, ...out].map((record) => ({
+    employeeName: record.employeeName || '--', employeeId: record.employeeId || '--', department: 'media', date: record.date,
+    totalSalesAmount: 0, whatsappEnquiries: 0, totalOrders: record.totalVideos, codOrders: record.activityType === 'video-shoot' ? record.totalVideos : 0,
+    prepaidOrders: record.activityType === 'video-out' ? record.totalVideos : 0, completedOrders: 0, cancelledOrders: 0, activityType: record.activityType,
+  }));
 };
 
 const formatCurrency = (val: number): string => `Rs. ${Number(val || 0).toLocaleString('en-IN')}`;
@@ -98,7 +174,8 @@ const generatePdfBuffer = (
   rows: ExportRow[],
   periodName: string,
   start: string,
-  end: string
+  end: string,
+  columns: ExportColumn[]
 ): Promise<Buffer> => {
   return new Promise((resolve, reject) => {
     try {
@@ -260,7 +337,7 @@ const generatePdfBuffer = (
       doc.rect(startTableX, currentY, tableTotalWidth, rowHeight + 2).strokeColor('#C4B5FD').lineWidth(1).stroke();
 
       const totalsData: Record<string, string> = {
-        employeeName: `Total (${rows.length} reports)`,
+        employeeName: `Total (${rows.length} records)`,
         employeeId: '',
         department: '',
         date: '',
@@ -310,10 +387,82 @@ const generatePdfBuffer = (
   });
 };
 
+const generateAllDepartmentsPdfBuffer = (
+  rows: ExportRow[],
+  periodName: string,
+  start: string,
+  end: string
+): Promise<Buffer> => new Promise((resolve, reject) => {
+  try {
+    const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margins: { top: 25, bottom: 25, left: 30, right: 30 } });
+    const chunks: Buffer[] = [];
+    doc.on('data', (chunk) => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+
+    (['sales', 'manager', 'packaging', 'media'] as const).forEach((department, departmentIndex) => {
+      if (departmentIndex > 0) doc.addPage();
+      const departmentRows = rows.filter((row) => row.department.toLowerCase() === department);
+      const departmentColumns = columnsFor(department);
+      const pageWidth = doc.page.width;
+      const contentWidth = pageWidth - 60;
+      const totalWidth = departmentColumns.reduce((sum, column) => sum + column.width, 0);
+      const scale = Math.min(1, contentWidth / totalWidth);
+      const startX = 30;
+      let y = 25;
+
+      doc.rect(startX, y, contentWidth, 48).fill('#570490');
+      doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(15).text('KL TRENDS', startX + 12, y + 10);
+      doc.font('Helvetica').fontSize(9).fillColor('#E9D5FF').text(`${department.toUpperCase()} DEPARTMENT REPORT`, startX + 12, y + 30);
+      doc.font('Helvetica').fontSize(8).text(`${periodName}  |  ${start} to ${end}`, startX + 12, y + 40, { width: contentWidth - 20, align: 'right' });
+      y += 62;
+
+      let x = startX;
+      doc.rect(startX, y, totalWidth * scale, 24).fill('#4A0E4E');
+      departmentColumns.forEach((column) => {
+        const width = column.width * scale;
+        doc.font('Helvetica-Bold').fontSize(7).fillColor('#FFFFFF').text(column.header, x + 3, y + 8, { width: width - 6, align: column.align || 'left' });
+        x += width;
+      });
+      y += 24;
+
+      departmentRows.forEach((row, rowIndex) => {
+        if (y > doc.page.height - 45) {
+          doc.addPage();
+          y = 35;
+        }
+        x = startX;
+        doc.rect(startX, y, totalWidth * scale, 20).fill(rowIndex % 2 === 0 ? '#FFFFFF' : '#FAF8FD');
+        departmentColumns.forEach((column) => {
+          const rawValue = row[column.key];
+          const value = typeof rawValue === 'number' ? rawValue.toLocaleString('en-IN') : String(rawValue || '--');
+          const width = column.width * scale;
+          doc.font('Helvetica').fontSize(7).fillColor('#1F2937').text(value, x + 3, y + 6, { width: width - 6, align: column.align || 'left' });
+          x += width;
+        });
+        y += 20;
+      });
+
+      if (!departmentRows.length) {
+        doc.font('Helvetica').fontSize(10).fillColor('#6B7280').text('No records for this department in the selected period.', startX, y + 14);
+      }
+    });
+    doc.end();
+  } catch (error) {
+    reject(error);
+  }
+});
+
 export const exportEmployeeReports = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { start, end, label, periodName } = range(req.query as Record<string, any>);
-    const rows = await rowsFor(start, end);
+    const requestedDepartment = String(req.query.department || 'all').toLowerCase();
+    const department = ['all', 'sales', 'manager', 'packaging', 'media'].includes(requestedDepartment)
+      ? requestedDepartment
+      : 'all';
+    const rows = department === 'sales' ? await rowsFor(start, end, department) : department === 'all'
+      ? [...await rowsFor(start, end, 'all'), ...await activityRowsFor(start, end, 'manager'), ...await activityRowsFor(start, end, 'packaging'), ...await activityRowsFor(start, end, 'media')]
+      : await activityRowsFor(start, end, department);
     if (!rows.length) {
       res.status(404).json({ success: false, error: 'No reports found for the selected period.' });
       return;
@@ -321,9 +470,11 @@ export const exportEmployeeReports = async (req: AuthenticatedRequest, res: Resp
     const format = String(req.query.format || 'pdf').toLowerCase();
 
     if (format === 'pdf') {
-      const pdfBuffer = await generatePdfBuffer(rows, periodName, start, end);
+      const pdfBuffer = department === 'all'
+        ? await generateAllDepartmentsPdfBuffer(rows, periodName, start, end)
+        : await generatePdfBuffer(rows, periodName, start, end, columnsFor(department));
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="KLTrends_Reports_${label}.pdf"`);
+      res.setHeader('Content-Disposition', `attachment; filename="KLTrends_Reports_${department}_${label}.pdf"`);
       res.send(pdfBuffer);
       return;
     }
@@ -331,29 +482,23 @@ export const exportEmployeeReports = async (req: AuthenticatedRequest, res: Resp
     if (format === 'excel' || format === 'xlsx') {
       const workbook = new ExcelJS.Workbook();
       const sheet = workbook.addWorksheet('Reports');
-      sheet.columns = [
-        { header: 'Employee Name', key: 'employeeName', width: 24 },
-        { header: 'Employee ID', key: 'employeeId', width: 16 },
-        { header: 'Department', key: 'department', width: 18 },
-        { header: 'Date', key: 'date', width: 14 },
-        { header: 'Total Sales (₹)', key: 'totalSalesAmount', width: 20 },
-        { header: 'WhatsApp Enquiries', key: 'whatsappEnquiries', width: 20 },
-        { header: 'Total Orders', key: 'totalOrders', width: 16 },
-        { header: 'COD Orders', key: 'codOrders', width: 16 },
-        { header: 'Prepaid Orders', key: 'prepaidOrders', width: 16 },
-        { header: 'Completed Orders', key: 'completedOrders', width: 18 },
-        { header: 'Cancelled Orders', key: 'cancelledOrders', width: 18 },
-      ];
-      rows.forEach((row) => sheet.addRow(row));
-      sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF570490' } };
-      sheet.getColumn(5).numFmt = '₹#,##0.00';
-      [6, 7, 8, 9, 10, 11].forEach((colIdx) => {
-        sheet.getColumn(colIdx).numFmt = '#,##0';
+      const exportDepartments = department === 'all' ? ['sales', 'manager', 'packaging', 'media'] : [department];
+      exportDepartments.forEach((exportDepartment, sheetIndex) => {
+        const exportColumns = columnsFor(exportDepartment);
+        const targetSheet = sheetIndex === 0 ? sheet : workbook.addWorksheet(exportDepartment.charAt(0).toUpperCase() + exportDepartment.slice(1));
+        targetSheet.name = exportDepartment.charAt(0).toUpperCase() + exportDepartment.slice(1);
+        targetSheet.columns = exportColumns.map((column) => ({ header: column.header, key: column.key, width: Math.max(14, Math.round(column.width / 4)) }));
+        rows.filter((row) => row.department.toLowerCase() === exportDepartment).forEach((row) => targetSheet.addRow(row));
+        targetSheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        targetSheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF570490' } };
+        exportColumns.forEach((column, index) => {
+          if (column.key === 'totalSalesAmount') targetSheet.getColumn(index + 1).numFmt = '₹#,##0.00';
+          if (['totalOrders', 'whatsappEnquiries', 'codOrders', 'prepaidOrders', 'completedOrders', 'cancelledOrders'].includes(column.key)) targetSheet.getColumn(index + 1).numFmt = '#,##0';
+        });
       });
       const buffer = await workbook.xlsx.writeBuffer();
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', `attachment; filename="KLTrends_Reports_${label}.xlsx"`);
+      res.setHeader('Content-Disposition', `attachment; filename="KLTrends_Reports_${department}_${label}.xlsx"`);
       res.send(Buffer.from(buffer));
       return;
     }

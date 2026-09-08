@@ -19,24 +19,30 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
-import { Text } from '../components/common/Text';
-import { BottomNavBar, TabName } from '../components/common/BottomNavBar';
-import { spacing, borderRadius } from '../theme/spacing';
-import { colors } from '../theme/colors';
-import { AppAlert as Alert } from '../utils/appAlert';
-import { useAuth } from '../hooks/useAuth';
-import { RootStackParamList } from '../navigation/RootNavigator';
+import { Text } from '../../components/common/Text';
+import { BottomNavBar, TabName } from '../../components/common/BottomNavBar';
+import { spacing, borderRadius } from '../../theme/spacing';
+import { colors } from '../../theme/colors';
+import { AppAlert as Alert } from '../../utils/appAlert';
+import { useAuth } from '../../hooks/useAuth';
+import { RootStackParamList } from '../../navigation/RootNavigator';
 import {
   adminApi,
   DashboardStats,
   AdminEmployee,
   EmployeeSales,
   AdminReportsSummary,
-} from '../api/admin';
-import { EARLY_REASON_PRESETS } from './AttendanceScreen';
+} from '../../api/admin';
+import { DailyExpense, managerApi, ProductReturn } from '../../api/manager';
+import { MediaActivitiesResponse } from '../../api/media';
+import { mediaApi } from '../../api/media';
+import { PackingListResponse } from '../../api/packaging';
+import { packagingApi } from '../../api/packaging';
+import { EARLY_REASON_PRESETS } from '../common/AttendanceScreen';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AdminDashboard'>;
 type ActiveSection = 'overview' | 'employees' | 'reports';
+type ReportDepartment = 'sales' | 'manager' | 'packaging' | 'media';
 
 const getTodayDate = () =>
   new Date().toLocaleDateString('en-US', {
@@ -57,6 +63,16 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
   const [employeeSearch, setEmployeeSearch] = useState('');
   const [salesByEmployee, setSalesByEmployee] = useState<EmployeeSales[]>([]);
   const [reportsSummary, setReportsSummary] = useState<AdminReportsSummary | null>(null);
+  const [reportDepartment, setReportDepartment] = useState<ReportDepartment>('sales');
+  const [managerReportData, setManagerReportData] = useState<{
+    returns: ProductReturn[];
+    expenses: DailyExpense[];
+  }>({ returns: [], expenses: [] });
+  const [packagingReportData, setPackagingReportData] = useState<PackingListResponse['data']>();
+  const [mediaReportData, setMediaReportData] = useState<{
+    shoots: MediaActivitiesResponse['data'];
+    out: MediaActivitiesResponse['data'];
+  }>({ shoots: undefined, out: undefined });
   const [selectedSelfieEmployee, setSelectedSelfieEmployee] = useState<AdminEmployee | null>(null);
   const [selfieModalVisible, setSelfieModalVisible] = useState(false);
   const [selectedEmployeeDetails, setSelectedEmployeeDetails] = useState<AdminEmployee | null>(null);
@@ -90,10 +106,15 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
 
   const fetchData = useCallback(async () => {
     try {
-      const [dashRes, empRes, repRes] = await Promise.all([
+      const [dashRes, empRes, repRes, returnsRes, expensesRes, packagingRes, shootsRes, outRes] = await Promise.all([
         adminApi.getDashboard(),
         adminApi.getEmployees(),
         adminApi.getReports(),
+        managerApi.getProductReturns(),
+        managerApi.getDailyExpenses(),
+        packagingApi.list(),
+        mediaApi.list('video-shoot'),
+        mediaApi.list('video-out'),
       ]);
       if (dashRes.success && dashRes.data) setStats(dashRes.data);
       if (empRes.success && empRes.data) setEmployees(empRes.data.employees);
@@ -101,6 +122,15 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
         setSalesByEmployee(repRes.data.salesByEmployee);
         setReportsSummary(repRes.data.summary);
       }
+      setManagerReportData({
+        returns: returnsRes.success ? returnsRes.data?.returns || [] : [],
+        expenses: expensesRes.success ? expensesRes.data?.expenses || [] : [],
+      });
+      if (packagingRes.success) setPackagingReportData(packagingRes.data);
+      setMediaReportData({
+        shoots: shootsRes.success ? shootsRes.data : undefined,
+        out: outRes.success ? outRes.data : undefined,
+      });
     } catch (e) {
       console.error('Admin dashboard fetch error:', e);
     } finally {
@@ -340,6 +370,78 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
   const openEmployeeDetails = (employee: AdminEmployee) => {
     setSelectedEmployeeDetails(employee);
     setEmployeeDetailsModalVisible(true);
+  };
+
+  const renderEmployeeDepartmentPerformance = () => {
+    if (!selectedEmployeeDetails) return null;
+
+    const employeeId = selectedEmployeeDetails.id;
+    const department = selectedEmployeeDetails.department.toLowerCase();
+
+    if (department === 'sales') {
+      return (
+        <>
+          <Text style={styles.detailSectionLabel}>SALES PERFORMANCE</Text>
+          <View style={styles.detailAttendanceRow}>
+            <View style={styles.detailAttendanceItem}><Text style={styles.detailLabel}>Revenue</Text><Text style={[styles.detailValue, { color: colors.primary }]}>{formatCurrency(selectedEmployeeSales?.totalSales || 0)}</Text></View>
+            <View style={styles.detailAttendanceItem}><Text style={styles.detailLabel}>Total Orders</Text><Text style={[styles.detailValue, { color: '#7C3AED' }]}>{selectedEmployeeSales?.totalOrders ?? 0}</Text></View>
+            <View style={styles.detailAttendanceItem}><Text style={styles.detailLabel}>Completed</Text><Text style={[styles.detailValue, { color: '#16A34A' }]}>{selectedEmployeeSales?.totalCompletedOrders || 0}</Text></View>
+          </View>
+          <View style={[styles.detailAttendanceRow, { marginTop: 8 }]}>
+            <View style={styles.detailAttendanceItem}><Text style={styles.detailLabel}>COD Orders</Text><Text style={[styles.detailValue, { color: '#D97706' }]}>{selectedEmployeeSales?.totalCodOrders || 0}</Text></View>
+            <View style={styles.detailAttendanceItem}><Text style={styles.detailLabel}>Prepaid</Text><Text style={[styles.detailValue, { color: '#2563EB' }]}>{selectedEmployeeSales?.totalPrepaidOrders || 0}</Text></View>
+            <View style={styles.detailAttendanceItem}><Text style={styles.detailLabel}>Cancelled</Text><Text style={[styles.detailValue, { color: '#DC2626' }]}>{selectedEmployeeSales?.totalCancelledOrders || 0}</Text></View>
+          </View>
+          <View style={styles.detailReportsRow}><Text style={styles.detailLabel}>WhatsApp Enquiries</Text><Text style={styles.detailValue}>{selectedEmployeeSales?.totalWhatsappEnquiries || 0}</Text></View>
+          <View style={[styles.detailReportsRow, { marginTop: 4 }]}><Text style={styles.detailLabel}>Reports submitted</Text><Text style={styles.detailValue}>{selectedEmployeeSales?.reportCount || 0}</Text></View>
+        </>
+      );
+    }
+
+    if (department === 'manager') {
+      const returns = managerReportData.returns.filter((record) => record.userId === employeeId);
+      const expenses = managerReportData.expenses.filter((record) => record.userId === employeeId);
+      return (
+        <>
+          <Text style={styles.detailSectionLabel}>MANAGER PERFORMANCE</Text>
+          <View style={styles.detailAttendanceRow}>
+            <View style={styles.detailAttendanceItem}><Text style={styles.detailLabel}>Returns</Text><Text style={[styles.detailValue, { color: '#DC2626' }]}>{returns.reduce((sum, record) => sum + record.returnQuantity, 0)}</Text></View>
+            <View style={styles.detailAttendanceItem}><Text style={styles.detailLabel}>Expenses</Text><Text style={[styles.detailValue, { color: '#D97706' }]}>₹{expenses.reduce((sum, record) => sum + record.amount, 0).toLocaleString('en-IN')}</Text></View>
+            <View style={styles.detailAttendanceItem}><Text style={styles.detailLabel}>Records</Text><Text style={styles.detailValue}>{returns.length + expenses.length}</Text></View>
+          </View>
+        </>
+      );
+    }
+
+    if (department === 'packaging') {
+      const records = (packagingReportData?.records || []).filter((record) => record.userId === employeeId);
+      const packed = records.reduce((sum, record) => sum + record.ordersPacked, 0);
+      const kltrends = records.filter((record) => record.orderSource === 'kltrends').reduce((sum, record) => sum + record.ordersPacked, 0);
+      const klindia = records.filter((record) => record.orderSource === 'klindia').reduce((sum, record) => sum + record.ordersPacked, 0);
+      return (
+        <>
+          <Text style={styles.detailSectionLabel}>PACKAGING PERFORMANCE</Text>
+          <View style={styles.detailAttendanceRow}>
+            <View style={styles.detailAttendanceItem}><Text style={styles.detailLabel}>Packed</Text><Text style={[styles.detailValue, { color: colors.primary }]}>{packed}</Text></View>
+            <View style={styles.detailAttendanceItem}><Text style={styles.detailLabel}>KLTrends</Text><Text style={[styles.detailValue, { color: '#D97706' }]}>{kltrends}</Text></View>
+            <View style={styles.detailAttendanceItem}><Text style={styles.detailLabel}>KLIndia</Text><Text style={[styles.detailValue, { color: '#2563EB' }]}>{klindia}</Text></View>
+          </View>
+        </>
+      );
+    }
+
+    const shoots = (mediaReportData.shoots?.activities || []).filter((record) => record.userId === employeeId);
+    const outs = (mediaReportData.out?.activities || []).filter((record) => record.userId === employeeId);
+    return (
+      <>
+        <Text style={styles.detailSectionLabel}>MEDIA PERFORMANCE</Text>
+        <View style={styles.detailAttendanceRow}>
+          <View style={styles.detailAttendanceItem}><Text style={styles.detailLabel}>Video Shoot</Text><Text style={[styles.detailValue, { color: colors.primary }]}>{shoots.reduce((sum, record) => sum + record.totalVideos, 0)}</Text></View>
+          <View style={styles.detailAttendanceItem}><Text style={styles.detailLabel}>Video Out</Text><Text style={[styles.detailValue, { color: '#16A34A' }]}>{outs.reduce((sum, record) => sum + record.totalVideos, 0)}</Text></View>
+          <View style={styles.detailAttendanceItem}><Text style={styles.detailLabel}>Records</Text><Text style={styles.detailValue}>{shoots.length + outs.length}</Text></View>
+        </View>
+      </>
+    );
   };
 
   // ── Loading ──────────────────────────────────────────────────────────────────
@@ -614,7 +716,7 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.earlyListWrap}>
             {stats.earlyCheckouts.map((item) => {
               const reasonPreset = EARLY_REASON_PRESETS.find(
-                (preset) => preset.id === item.reason
+                (preset) => preset.id === item.reason || preset.label === item.reason
               );
 
               return (
@@ -835,6 +937,112 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
   );
 
   // ── Reports ──────────────────────────────────────────────────────────────────
+  const renderReportDepartmentTabs = () => (
+    <View style={styles.reportDepartmentTabs}>
+      {([
+        ['sales', 'Sales', 'trending-up-outline'],
+        ['manager', 'Manager', 'briefcase-outline'],
+        ['packaging', 'Packaging', 'cube-outline'],
+        ['media', 'Media', 'videocam-outline'],
+      ] as const).map(([id, label, icon]) => (
+        <TouchableOpacity
+          key={id}
+          style={[styles.reportDepartmentTab, reportDepartment === id && styles.reportDepartmentTabActive]}
+          onPress={() => setReportDepartment(id)}
+          activeOpacity={0.8}
+        >
+          <Ionicons name={icon} size={15} color={reportDepartment === id ? '#FFFFFF' : colors.primary} />
+          <Text style={[styles.reportDepartmentTabText, reportDepartment === id && styles.reportDepartmentTabTextActive]}>
+            {label}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+
+  const renderNonSalesDepartmentReport = () => {
+    const departmentEmployees = employees.filter(
+      (employee) => employee.department.toLowerCase() === reportDepartment
+    );
+
+    const cards = departmentEmployees.map((employee) => {
+      const returns = managerReportData.returns.filter((record) => record.userId === employee.id);
+      const expenses = managerReportData.expenses.filter((record) => record.userId === employee.id);
+      const packingRecords = (packagingReportData?.records || []).filter((record) => record.userId === employee.id);
+      const shootRecords = (mediaReportData.shoots?.activities || []).filter((record) => record.userId === employee.id);
+      const outRecords = (mediaReportData.out?.activities || []).filter((record) => record.userId === employee.id);
+
+      const metrics = reportDepartment === 'manager'
+        ? [
+            { label: 'Returns', value: returns.reduce((sum, record) => sum + record.returnQuantity, 0), color: '#DC2626' },
+            { label: 'Expenses', value: `₹${expenses.reduce((sum, record) => sum + record.amount, 0).toLocaleString('en-IN')}`, color: '#D97706' },
+            { label: 'Records', value: returns.length + expenses.length, color: colors.primary },
+          ]
+        : reportDepartment === 'packaging'
+        ? [
+            { label: 'Packed', value: packingRecords.reduce((sum, record) => sum + record.ordersPacked, 0), color: colors.primary },
+            { label: 'KLTrends', value: packingRecords.filter((record) => record.orderSource === 'kltrends').reduce((sum, record) => sum + record.ordersPacked, 0), color: '#D97706' },
+            { label: 'KLIndia', value: packingRecords.filter((record) => record.orderSource === 'klindia').reduce((sum, record) => sum + record.ordersPacked, 0), color: '#2563EB' },
+          ]
+        : [
+            { label: 'Shoot', value: shootRecords.reduce((sum, record) => sum + record.totalVideos, 0), color: colors.primary },
+            { label: 'Video Out', value: outRecords.reduce((sum, record) => sum + record.totalVideos, 0), color: '#16A34A' },
+            { label: 'Records', value: shootRecords.length + outRecords.length, color: colors.primary },
+          ];
+
+      const primaryValue = Number(metrics[0].value) || 0;
+      return { employee, metrics, primaryValue, reportCount: metrics[2].value };
+    }).sort((a, b) => b.primaryValue - a.primaryValue);
+
+    const maxValue = Math.max(1, ...cards.map((card) => card.primaryValue));
+    return (
+      <>
+        <View style={styles.reportsSectionHeader}>
+          <Text style={styles.sectionLabel}>Team {reportDepartment.charAt(0).toUpperCase() + reportDepartment.slice(1)} Performance</Text>
+          <Text style={styles.reportsTeamCount}>{cards.length} {cards.length === 1 ? 'employee' : 'employees'}</Text>
+        </View>
+        {cards.map((card, index) => (
+          <TouchableOpacity
+            key={card.employee.id}
+            style={styles.minimalEmpCard}
+            onPress={() => openEmployeeDetails(card.employee)}
+            activeOpacity={0.8}
+          >
+            <View style={styles.minimalEmpTop}>
+              <View style={styles.minimalEmpRankBadge}><Text style={styles.minimalEmpRankText}>#{index + 1}</Text></View>
+              <Image
+                source={{ uri: card.employee.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(card.employee.fullName)}&background=F1E6F8&color=570490&size=200` }}
+                style={styles.minimalEmpAvatar}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.minimalEmpName}>{card.employee.fullName}</Text>
+                <Text style={styles.minimalEmpMeta}>{card.employee.department} · {card.employee.employeeId || '--'}</Text>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={styles.minimalEmpSales}>{card.primaryValue.toLocaleString('en-IN')}</Text>
+                <Text style={styles.minimalEmpReports}>{card.reportCount} records</Text>
+              </View>
+            </View>
+            <View style={styles.minimalEmpStatsRow}>
+              {card.metrics.map((metric, metricIndex) => (
+                <React.Fragment key={metric.label}>
+                  {metricIndex > 0 && <Text style={styles.minimalEmpStatDot}>·</Text>}
+                  <View style={styles.minimalEmpStatItem}>
+                    <Text style={styles.minimalEmpStatText}>{metric.label}: <Text style={{ fontWeight: '800', color: metric.color }}>{metric.value}</Text></Text>
+                  </View>
+                </React.Fragment>
+              ))}
+            </View>
+            <View style={styles.minimalProgressBg}>
+              <View style={[styles.minimalProgressFill, { width: `${Math.max(6, (card.primaryValue / maxValue) * 100)}%` }]} />
+            </View>
+          </TouchableOpacity>
+        ))}
+        {cards.length === 0 && <View style={styles.emptyWrap}><Ionicons name="bar-chart-outline" size={44} color={colors.border} /><Text style={styles.emptyText}>No {reportDepartment} records this month</Text></View>}
+      </>
+    );
+  };
+
   const renderReports = () => {
     const totalOrders = reportsSummary
       ? reportsSummary.totalOrders ?? ((reportsSummary.totalCodOrders || 0) + (reportsSummary.totalPrepaidOrders || 0))
@@ -864,6 +1072,12 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.reportsExportBtnText}>Export</Text>
           </TouchableOpacity>
         </View>
+
+        {renderReportDepartmentTabs()}
+
+        {reportDepartment !== 'sales' && renderNonSalesDepartmentReport()}
+
+        {reportDepartment !== 'sales' ? null : <>
 
         {reportsSummary && (
           <View style={styles.minimalReportCard}>
@@ -1013,6 +1227,7 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.emptyText}>No sales reports this month</Text>
           </View>
         )}
+        </>}
       </>
     );
   };
@@ -1099,25 +1314,6 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
                   </View>
                 </View>
 
-                <Text style={styles.detailSectionLabel}>CONTACT & EMPLOYMENT</Text>
-                {[
-                  ['Employee ID', selectedEmployeeDetails.employeeId, 'card-outline'],
-                  ['Work Email', selectedEmployeeDetails.email, 'mail-outline'],
-                  ['Phone', selectedEmployeeDetails.phone || 'Not provided', 'call-outline'],
-                  ['Department', selectedEmployeeDetails.department || 'Not assigned', 'business-outline'],
-                  ['Joined', selectedEmployeeDetails.joiningDate || 'Not recorded', 'calendar-outline'],
-                  ['Age', selectedEmployeeDetails.age ? String(selectedEmployeeDetails.age) : 'Not recorded', 'person-outline'],
-                  ['Role', selectedEmployeeDetails.role, 'shield-checkmark-outline'],
-                ].map(([label, value, icon]) => (
-                  <View key={label} style={styles.detailRow}>
-                    <Ionicons name={icon as any} size={16} color={colors.primary} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.detailLabel}>{label}</Text>
-                      <Text style={styles.detailValue} selectable>{value}</Text>
-                    </View>
-                  </View>
-                ))}
-
                 <Text style={styles.detailSectionLabel}>TODAY'S ATTENDANCE</Text>
                 <View style={styles.detailAttendanceRow}>
                   <View style={styles.detailAttendanceItem}>
@@ -1134,57 +1330,19 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
                   </View>
                 </View>
 
-                <Text style={styles.detailSectionLabel}>THIS MONTH PERFORMANCE</Text>
-                <View style={styles.detailAttendanceRow}>
-                  <View style={styles.detailAttendanceItem}>
-                    <Text style={styles.detailLabel}>Revenue</Text>
-                    <Text style={[styles.detailValue, { color: colors.primary }]}>
-                      {formatCurrency(selectedEmployeeSales?.totalSales || 0)}
-                    </Text>
+                {selectedEmployeeDetails.earlyCheckoutReason && (
+                  <View style={styles.detailEarlyLeaveBox}>
+                    <Ionicons name="time-outline" size={17} color="#B45309" />
+                    <View style={{ flex: 1, marginLeft: 8 }}>
+                      <Text style={styles.detailEarlyLeaveLabel}>Early Leave Reason</Text>
+                      <Text style={styles.detailEarlyLeaveValue} selectable>
+                        {selectedEmployeeDetails.earlyCheckoutReason}
+                      </Text>
+                    </View>
                   </View>
-                  <View style={styles.detailAttendanceItem}>
-                    <Text style={styles.detailLabel}>Total Orders</Text>
-                    <Text style={[styles.detailValue, { color: '#7C3AED' }]}>
-                      {selectedEmployeeSales?.totalOrders ?? ((selectedEmployeeSales?.totalCodOrders || 0) + (selectedEmployeeSales?.totalPrepaidOrders || 0))}
-                    </Text>
-                  </View>
-                  <View style={styles.detailAttendanceItem}>
-                    <Text style={styles.detailLabel}>Completed</Text>
-                    <Text style={[styles.detailValue, { color: '#16A34A' }]}>
-                      {selectedEmployeeSales?.totalCompletedOrders || 0}
-                    </Text>
-                  </View>
-                </View>
+                )}
 
-                <View style={[styles.detailAttendanceRow, { marginTop: 8 }]}>
-                  <View style={styles.detailAttendanceItem}>
-                    <Text style={styles.detailLabel}>COD Orders</Text>
-                    <Text style={[styles.detailValue, { color: '#D97706' }]}>
-                      {selectedEmployeeSales?.totalCodOrders || 0}
-                    </Text>
-                  </View>
-                  <View style={styles.detailAttendanceItem}>
-                    <Text style={styles.detailLabel}>Prepaid</Text>
-                    <Text style={[styles.detailValue, { color: '#2563EB' }]}>
-                      {selectedEmployeeSales?.totalPrepaidOrders || 0}
-                    </Text>
-                  </View>
-                  <View style={styles.detailAttendanceItem}>
-                    <Text style={styles.detailLabel}>Cancelled</Text>
-                    <Text style={[styles.detailValue, { color: '#DC2626' }]}>
-                      {selectedEmployeeSales?.totalCancelledOrders || 0}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.detailReportsRow}>
-                  <Text style={styles.detailLabel}>WhatsApp Enquiries</Text>
-                  <Text style={styles.detailValue}>{selectedEmployeeSales?.totalWhatsappEnquiries || 0}</Text>
-                </View>
-                <View style={[styles.detailReportsRow, { marginTop: 4 }]}>
-                  <Text style={styles.detailLabel}>Reports submitted</Text>
-                  <Text style={styles.detailValue}>{selectedEmployeeSales?.reportCount || 0}</Text>
-                </View>
+                {renderEmployeeDepartmentPerformance()}
 
                 {selectedEmployeeDetails.selfieUrl && (
                   <TouchableOpacity
@@ -1780,6 +1938,78 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.primary,
   },
+  reportDepartmentTabs: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 14,
+  },
+  reportDepartmentTab: {
+    flex: 1,
+    minHeight: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    borderRadius: 10,
+    paddingHorizontal: 3,
+  },
+  reportDepartmentTabActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  reportDepartmentTabText: {
+    color: colors.textSecondary,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  reportDepartmentTabTextActive: {
+    color: '#FFFFFF',
+  },
+  departmentReportCard: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    gap: 4,
+  },
+  departmentReportTitle: {
+    color: colors.textPrimary,
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  departmentReportSubtitle: {
+    color: colors.textMuted,
+    fontSize: 12,
+    marginBottom: 12,
+  },
+  departmentMetricGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 10,
+  },
+  departmentMetric: {
+    width: '48%',
+    backgroundColor: colors.surface,
+    borderRadius: 10,
+    padding: 11,
+    minHeight: 72,
+  },
+  departmentMetricValue: {
+    color: colors.primary,
+    fontSize: 21,
+    lineHeight: 28,
+    fontWeight: '800',
+  },
+  departmentMetricLabel: {
+    color: colors.textSecondary,
+    fontSize: 11,
+    marginTop: 3,
+  },
 
   minimalReportCard: {
     backgroundColor: colors.card,
@@ -1983,6 +2213,9 @@ const styles = StyleSheet.create({
   detailValue: { fontSize: 13, fontWeight: '700', color: colors.textPrimary, marginTop: 2, fontVariant: ['tabular-nums'] },
   detailAttendanceRow: { flexDirection: 'row', gap: 8 },
   detailAttendanceItem: { flex: 1, backgroundColor: colors.surface, borderRadius: 10, padding: 10 },
+  detailEarlyLeaveBox: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: '#FFFBEB', borderRadius: 10, borderWidth: 1, borderColor: '#FDE68A', padding: 10, marginTop: 10 },
+  detailEarlyLeaveLabel: { fontSize: 11, fontWeight: '700', color: '#92400E' },
+  detailEarlyLeaveValue: { fontSize: 13, fontWeight: '700', color: '#78350F', marginTop: 3, lineHeight: 18 },
   detailReportsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.surface, borderRadius: 10, padding: 10, marginTop: 8 },
   detailsSelfieBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, marginTop: 16, backgroundColor: colors.primarySoft, borderRadius: 10 },
 

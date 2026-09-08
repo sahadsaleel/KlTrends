@@ -13,6 +13,7 @@ import {
   updateProfile,
 } from '../controllers/authController.js';
 import { protect } from '../middleware/authMiddleware.js';
+import { validateEmployeeDepartment } from '../validators/index.js';
 
 const router = Router();
 
@@ -25,7 +26,7 @@ router.post('/register', registerAdmin);
 router.post('/login', loginAdmin);
 
 // Employee Auth Endpoints (Username/Password)
-router.post('/employee/register', registerEmployee);
+router.post('/employee/register', validateEmployeeDepartment, registerEmployee);
 router.post('/employee/login', loginEmployee);
 
 // Forgot & Reset Password Endpoints

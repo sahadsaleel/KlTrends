@@ -17,16 +17,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
-import { Text } from '../components/common/Text';
-import { AppHeader } from '../components/common/AppHeader';
-import { BottomNavBar, TabName } from '../components/common/BottomNavBar';
-import { SelfieVerificationModal } from '../components/SelfieVerificationModal';
-import { colors } from '../theme/colors';
-import { AppAlert as Alert } from '../utils/appAlert';
-import { spacing, borderRadius } from '../theme/spacing';
-import { useAuth } from '../hooks/useAuth';
-import { attendanceApi, ActivityItem, AttendanceStats } from '../api/attendance';
-import { RootStackParamList } from '../navigation/RootNavigator';
+import { Text } from '../../components/common/Text';
+import { AppHeader } from '../../components/common/AppHeader';
+import { BottomNavBar, TabName } from '../../components/common/BottomNavBar';
+import { SelfieVerificationModal } from '../../components/SelfieVerificationModal';
+import { colors } from '../../theme/colors';
+import { AppAlert as Alert } from '../../utils/appAlert';
+import { spacing, borderRadius } from '../../theme/spacing';
+import { useAuth } from '../../hooks/useAuth';
+import { attendanceApi, ActivityItem, AttendanceStats } from '../../api/attendance';
+import { RootStackParamList } from '../../navigation/RootNavigator';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Attendance'>;
 
@@ -311,7 +311,23 @@ export const AttendanceScreen: React.FC<Props> = ({ navigation }) => {
         case 'Attendance':
           break;
         case 'Reports':
-          navigation.navigate('SalesReports');
+        case 'SalesReports':
+          navigation.navigate('SalesReports' as any);
+          break;
+        case 'AddReport':
+          navigation.navigate('AddEditReport' as any);
+          break;
+        case 'ProductReturns':
+          navigation.navigate('ProductReturns' as any);
+          break;
+        case 'DailyExpenses':
+          navigation.navigate('DailyExpenses' as any);
+          break;
+        case 'PackagingDuties':
+          navigation.navigate('PackagingDuties' as any);
+          break;
+        case 'MediaDuties':
+          navigation.navigate('MediaDuties' as any);
           break;
         case 'Profile':
           navigation.navigate('EditProfile');

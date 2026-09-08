@@ -13,15 +13,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useForm, Controller } from 'react-hook-form';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Text } from '../components/common/Text';
-import { Input } from '../components/common/Input';
-import { Button } from '../components/common/Button';
-import { colors } from '../theme/colors';
-import { spacing, borderRadius } from '../theme/spacing';
-import { authApi } from '../api/auth';
-import { useAuth } from '../hooks/useAuth';
-import { User } from '../types';
-import { RootStackParamList } from '../navigation/RootNavigator';
+import { Text } from '../../components/common/Text';
+import { Input } from '../../components/common/Input';
+import { Button } from '../../components/common/Button';
+import { colors } from '../../theme/colors';
+import { spacing, borderRadius } from '../../theme/spacing';
+import { authApi } from '../../api/auth';
+import { useAuth } from '../../hooks/useAuth';
+import { User, Department, VALID_DEPARTMENTS } from '../../types';
+import { RootStackParamList } from '../../navigation/RootNavigator';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EmployeeRegister'>;
 
@@ -32,10 +32,45 @@ interface EmailStepFormData {
 interface AccountDetailsFormData {
   username: string;
   fullName: string;
+  department: Department | '';
   password: string;
   confirmPassword: string;
   phone?: string;
 }
+
+interface DepartmentOption {
+  key: Department;
+  label: string;
+  iconName: keyof typeof Ionicons.glyphMap;
+  description: string;
+}
+
+const DEPARTMENT_OPTIONS: DepartmentOption[] = [
+  {
+    key: 'sales',
+    label: 'Sales',
+    iconName: 'trending-up-outline',
+    description: 'Sales, orders & deals',
+  },
+  {
+    key: 'manager',
+    label: 'Manager',
+    iconName: 'shield-checkmark-outline',
+    description: 'Operations & oversight',
+  },
+  {
+    key: 'packaging',
+    label: 'Packaging',
+    iconName: 'cube-outline',
+    description: 'Inventory & dispatch',
+  },
+  {
+    key: 'media',
+    label: 'Media',
+    iconName: 'camera-outline',
+    description: 'Content & marketing',
+  },
+];
 
 export const EmployeeRegisterScreen: React.FC<Props> = ({ navigation }) => {
   const { login } = useAuth();
@@ -69,6 +104,7 @@ export const EmployeeRegisterScreen: React.FC<Props> = ({ navigation }) => {
     defaultValues: {
       username: '',
       fullName: '',
+      department: '',
       password: '',
       confirmPassword: '',
       phone: '',
@@ -177,6 +213,11 @@ export const EmployeeRegisterScreen: React.FC<Props> = ({ navigation }) => {
 
   // Step 3: Complete Registration
   const onCompleteRegistration = async (data: AccountDetailsFormData) => {
+    if (!data.department || !data.department.trim()) {
+      setServerError('Please select a department before registration.');
+      return;
+    }
+
     if (data.password !== data.confirmPassword) {
       setServerError('Passwords do not match.');
       return;
@@ -191,6 +232,7 @@ export const EmployeeRegisterScreen: React.FC<Props> = ({ navigation }) => {
         otp: otp.trim(),
         username: data.username.trim(),
         fullName: data.fullName.trim(),
+        department: data.department.trim(),
         password: data.password,
         phone: data.phone?.trim() || '',
       });
@@ -224,7 +266,7 @@ export const EmployeeRegisterScreen: React.FC<Props> = ({ navigation }) => {
             {/* Brand Logo Header */}
             <View style={styles.logoWrapper}>
               <Image
-                source={require('../../assets/logo.png')}
+                source={require('../../../assets/logo.png')}
                 style={styles.logoImage}
                 resizeMode="contain"
               />
@@ -422,6 +464,122 @@ export const EmployeeRegisterScreen: React.FC<Props> = ({ navigation }) => {
                     />
                   )}
                 />
+
+                {/* Department Selection */}
+                <View style={styles.deptSection}>
+                  <View style={styles.deptHeaderRow}>
+                    <View style={styles.deptLabelContainer}>
+                      <Ionicons
+                        name="business-outline"
+                        size={16}
+                        color={colors.primary}
+                        style={{ marginRight: 6 }}
+                      />
+                      <Text style={styles.deptLabel}>Department</Text>
+                      <Text style={styles.requiredAsterisk}> *</Text>
+                    </View>
+                    <View style={styles.requiredBadge}>
+                      <Text style={styles.requiredBadgeText}>Required</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.deptSubtitle}>
+                    Select your assigned department
+                  </Text>
+
+                  <Controller
+                    control={detailsControl}
+                    name="department"
+                    rules={{
+                      required: 'Please select a department before registration',
+                      validate: (val) =>
+                        (val && VALID_DEPARTMENTS.includes(val as Department)) ||
+                        'Please select a valid department',
+                    }}
+                    render={({ field: { onChange, value } }) => (
+                      <View>
+                        <View style={styles.deptGrid}>
+                          {DEPARTMENT_OPTIONS.map((dept) => {
+                            const isSelected = value === dept.key;
+                            return (
+                              <TouchableOpacity
+                                key={dept.key}
+                                style={[
+                                  styles.deptCard,
+                                  isSelected && styles.deptCardActive,
+                                  detailsErrors.department && !value && styles.deptCardError,
+                                ]}
+                                onPress={() => {
+                                  onChange(dept.key);
+                                  if (serverError) setServerError(null);
+                                }}
+                                activeOpacity={0.7}
+                              >
+                                <View style={styles.deptCardHeader}>
+                                  <View
+                                    style={[
+                                      styles.deptIconWrapper,
+                                      isSelected && styles.deptIconWrapperActive,
+                                    ]}
+                                  >
+                                    <Ionicons
+                                      name={dept.iconName}
+                                      size={18}
+                                      color={isSelected ? '#FFFFFF' : colors.primary}
+                                    />
+                                  </View>
+                                  <View
+                                    style={[
+                                      styles.deptRadio,
+                                      isSelected && styles.deptRadioActive,
+                                    ]}
+                                  >
+                                    {isSelected && (
+                                      <Ionicons
+                                        name="checkmark"
+                                        size={12}
+                                        color="#FFFFFF"
+                                      />
+                                    )}
+                                  </View>
+                                </View>
+                                <Text
+                                  style={[
+                                    styles.deptTitle,
+                                    isSelected && styles.deptTitleActive,
+                                  ]}
+                                >
+                                  {dept.label}
+                                </Text>
+                                <Text
+                                  style={[
+                                    styles.deptDescription,
+                                    isSelected && styles.deptDescriptionActive,
+                                  ]}
+                                  numberOfLines={1}
+                                >
+                                  {dept.description}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+
+                        {detailsErrors.department && (
+                          <View style={styles.deptErrorRow}>
+                            <Ionicons
+                              name="alert-circle"
+                              size={15}
+                              color={colors.error}
+                            />
+                            <Text style={styles.deptErrorText}>
+                              {detailsErrors.department.message}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    )}
+                  />
+                </View>
 
                 {/* Password */}
                 <Controller
@@ -691,6 +849,128 @@ const styles = StyleSheet.create({
   submitBtn: {
     marginTop: spacing.sm,
     marginBottom: spacing.lg,
+  },
+  // Department Selection Styles
+  deptSection: {
+    marginBottom: spacing.md,
+  },
+  deptHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  deptLabelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  deptLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  requiredAsterisk: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.error,
+  },
+  requiredBadge: {
+    backgroundColor: colors.primarySoft,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+  },
+  requiredBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  deptSubtitle: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+  },
+  deptGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: spacing.xs + 2,
+  },
+  deptCard: {
+    width: '48%',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    padding: spacing.sm + 2,
+    marginBottom: spacing.xs,
+  },
+  deptCardActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryTint,
+  },
+  deptCardError: {
+    borderColor: '#FCA5A5',
+    backgroundColor: colors.errorLight,
+  },
+  deptCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  deptIconWrapper: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deptIconWrapperActive: {
+    backgroundColor: colors.primary,
+  },
+  deptRadio: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    borderColor: colors.borderPurple,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  deptRadioActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  deptTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  deptTitleActive: {
+    color: colors.primaryDark,
+  },
+  deptDescription: {
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  deptDescriptionActive: {
+    color: colors.primaryLight,
+  },
+  deptErrorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.xs,
+    paddingHorizontal: 2,
+  },
+  deptErrorText: {
+    fontSize: 12,
+    color: colors.error,
+    marginLeft: spacing.xs,
+    fontWeight: '500',
   },
   footerRow: {
     flexDirection: 'row',
