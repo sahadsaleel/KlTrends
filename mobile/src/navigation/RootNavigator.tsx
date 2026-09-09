@@ -1,7 +1,7 @@
-import React from 'react';
-import { View, ActivityIndicator, Image } from 'react-native';
+import React, { useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { SplashScreen } from '../screens/common/SplashScreen';
 import { AdminLoginScreen } from '../screens/admin/AdminLoginScreen';
 import { AdminDashboardScreen } from '../screens/admin/AdminDashboardScreen';
 import { AdminProfileScreen } from '../screens/admin/AdminProfileScreen';
@@ -26,11 +26,13 @@ import { ExpenseHistoryScreen } from '../screens/departments/manager/ExpenseHist
 import { DailyPackingScreen } from '../screens/departments/packaging/DailyPackingScreen';
 import { AddDailyPackingScreen } from '../screens/departments/packaging/AddDailyPackingScreen';
 import { PackingHistoryScreen } from '../screens/departments/packaging/PackingHistoryScreen';
+import { PackagingDutiesScreen } from '../screens/departments/packaging/PackagingDutiesScreen';
 import { Report } from '../api/reports';
 import { colors } from '../theme/colors';
 import { useAuth } from '../hooks/useAuth';
 
 export type RootStackParamList = {
+  Splash: undefined;
   EmployeeLogin: undefined;
   EmployeeRegister: undefined;
   AdminLogin: undefined;
@@ -49,6 +51,7 @@ export type RootStackParamList = {
   DailyPacking: undefined;
   AddDailyPacking: undefined;
   PackingHistory: undefined;
+  PackagingDuties: undefined;
   EditProfile: undefined;
   AdminProfile: undefined;
   AdminReportDownload: undefined;
@@ -58,26 +61,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export const RootNavigator = () => {
   const { user, token, isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: '#FFFFFF',
-        }}
-      >
-        <Image
-          source={require('../../assets/logo.png')}
-          style={{ width: 160, height: 75, marginBottom: 20 }}
-          resizeMode="contain"
-        />
-        <ActivityIndicator size="small" color={colors.primary} />
-      </View>
-    );
-  }
+  const [splashFinished, setSplashFinished] = useState(false);
 
   const isAuthenticated = !!user && !!token;
   const isAdmin = user?.role === 'admin';
@@ -89,9 +73,28 @@ export const RootNavigator = () => {
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: colors.background },
+          animation: 'fade',
         }}
       >
-        {isAuthenticated ? (
+        {!splashFinished || isLoading ? (
+          // App Entry Splash / Welcome Page (Purple background + Center Logo Animation)
+          <Stack.Screen
+            name="Splash"
+            options={{
+              headerShown: false,
+              animation: 'fade',
+              contentStyle: { backgroundColor: colors.primary },
+            }}
+          >
+            {(props) => (
+              <SplashScreen
+                {...props}
+                isReady={!isLoading}
+                onFinish={() => setSplashFinished(true)}
+              />
+            )}
+          </Stack.Screen>
+        ) : isAuthenticated ? (
           // Main Application Stack (User is logged in - Auth screens unmounted)
           <>
             {isAdmin ? (
@@ -223,7 +226,11 @@ export const RootNavigator = () => {
         ) : (
           // Auth Stack (User is logged out)
           <>
-            <Stack.Screen name="EmployeeLogin" component={EmployeeLoginScreen} />
+            <Stack.Screen
+              name="EmployeeLogin"
+              component={EmployeeLoginScreen}
+              options={{ animation: 'fade' }}
+            />
             <Stack.Screen name="EmployeeRegister" component={EmployeeRegisterScreen} />
             <Stack.Screen name="AdminLogin" component={AdminLoginScreen} />
             <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />

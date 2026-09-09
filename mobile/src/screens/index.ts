@@ -10,6 +10,7 @@ export * from './employee/EmployeeRegisterScreen';
 export * from './employee/ForgotPasswordScreen';
 
 // Common Screens
+export * from './common/SplashScreen';
 export * from './common/HomeScreen';
 export * from './common/AttendanceScreen';
 export * from './common/EditProfileScreen';
