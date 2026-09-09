@@ -70,8 +70,7 @@ export const SalesReportScreen: React.FC<Props> = ({ navigation }) => {
         AddReport: 'AddEditReport',
         ProductReturns: 'ProductReturns',
         DailyExpenses: 'DailyExpenses',
-        PackagingDuties: 'PackagingDuties',
-        MediaDuties: 'MediaDuties',
+        DailyPacking: 'DailyPacking',
         Profile: 'EditProfile',
       };
       navigation.navigate(destinations[tab] as any);
@@ -95,32 +94,7 @@ export const SalesReportScreen: React.FC<Props> = ({ navigation }) => {
         onProfilePress={() => navigation.navigate('EditProfile')}
       />
 
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => {
-              setRefreshing(true);
-              load();
-            }}
-            colors={[colors.primary]}
-            tintColor={colors.primary}
-          />
-        }
-      >
-        {/* Action Button */}
-        <TouchableOpacity
-          style={styles.newButton}
-          onPress={() => navigation.navigate('AddEditReport', {})}
-          activeOpacity={0.85}
-        >
-          <Ionicons name="add-circle" color="#fff" size={22} />
-          <Text style={styles.newText}>New Sales Report</Text>
-        </TouchableOpacity>
-
-        {/* Monthly Summary Banner */}
+      <View style={styles.stickyReportHeader}>
         {summary && reports.length > 0 && (
           <View style={styles.summaryBanner}>
             <View style={styles.summaryBannerHeader}>
@@ -138,22 +112,48 @@ export const SalesReportScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.summaryPillLabel}>Total Orders</Text>
                 <Text style={styles.summaryPillValue}>{summary.totalOrders ?? 0}</Text>
               </View>
-              <View style={[styles.summaryPill, { backgroundColor: '#F0FDF4' }]}>
-                <Text style={[styles.summaryPillLabel, { color: '#15803D' }]}>Completed</Text>
-                <Text style={[styles.summaryPillValue, { color: '#16A34A' }]}>
-                  {summary.completedOrders ?? 0}
+              <View style={[styles.summaryPill, styles.summaryCodPill]}>
+                <Text style={[styles.summaryPillLabel, styles.summaryCodLabel]}>Total COD</Text>
+                <Text style={[styles.summaryPillValue, styles.summaryCodValue]}>
+                  {summary.codOrders ?? 0}
                 </Text>
               </View>
-              <View style={[styles.summaryPill, { backgroundColor: '#FEF2F2' }]}>
-                <Text style={[styles.summaryPillLabel, { color: '#B91C1C' }]}>Cancelled</Text>
-                <Text style={[styles.summaryPillValue, { color: '#DC2626' }]}>
-                  {summary.cancelledOrders ?? 0}
+              <View style={[styles.summaryPill, styles.summaryPrepaidPill]}>
+                <Text style={[styles.summaryPillLabel, styles.summaryPrepaidLabel]}>Total Prepaid</Text>
+                <Text style={[styles.summaryPillValue, styles.summaryPrepaidValue]}>
+                  {summary.prepaidOrders ?? 0}
                 </Text>
               </View>
             </View>
           </View>
         )}
 
+        {/* Action Button */}
+        <TouchableOpacity
+          style={styles.newButton}
+          onPress={() => navigation.navigate('AddEditReport', {})}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="add-circle" color="#fff" size={22} />
+          <Text style={styles.newText}>New Sales Report</Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              load();
+            }}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        }
+      >
         {/* Reports List */}
         {loading ? (
           <View style={styles.loadingWrap}>
@@ -208,38 +208,22 @@ export const SalesReportScreen: React.FC<Props> = ({ navigation }) => {
                       <Text style={styles.metricLabel}>Total Orders</Text>
                     </View>
                     <Text style={styles.metricValue}>{totalOrders}</Text>
-                    <View style={styles.orderPillsRow}>
-                      <View style={styles.codPill}>
-                        <Text style={styles.codPillText}>COD: {report.codOrders ?? 0}</Text>
-                      </View>
-                      <View style={styles.prepaidPill}>
-                        <Text style={styles.prepaidPillText}>Prepaid: {report.prepaidOrders ?? 0}</Text>
-                      </View>
+                  </View>
+                  <View style={[styles.metricCard, styles.codMetricCard]}>
+                    <View style={styles.metricCardTop}>
+                      <Ionicons name="cube-outline" size={16} color="#D97706" />
+                      <Text style={[styles.metricLabel, styles.codMetricLabel]}>COD Orders</Text>
                     </View>
+                    <Text style={[styles.metricValue, styles.codMetricValue]}>{report.codOrders ?? 0}</Text>
+                  </View>
+                  <View style={[styles.metricCard, styles.prepaidMetricCard]}>
+                    <View style={styles.metricCardTop}>
+                      <Ionicons name="card-outline" size={16} color="#2563EB" />
+                      <Text style={[styles.metricLabel, styles.prepaidMetricLabel]}>Prepaid</Text>
+                    </View>
+                    <Text style={[styles.metricValue, styles.prepaidMetricValue]}>{report.prepaidOrders ?? 0}</Text>
                   </View>
 
-                  {/* Fulfillment Status Box */}
-                  <View style={styles.metricCard}>
-                    <View style={styles.metricCardTop}>
-                      <Ionicons name="cart-outline" size={14} color="#2563EB" />
-                      <Text style={styles.metricLabel}>Order Status</Text>
-                    </View>
-                    <View style={styles.statusRow}>
-                      <View style={styles.statusItem}>
-                        <Text style={styles.statusItemLabel}>Completed</Text>
-                        <Text style={[styles.statusItemValue, { color: '#16A34A' }]}>
-                          {report.completedOrders ?? 0}
-                        </Text>
-                      </View>
-                      <View style={styles.statusDivider} />
-                      <View style={styles.statusItem}>
-                        <Text style={styles.statusItemLabel}>Cancelled</Text>
-                        <Text style={[styles.statusItemValue, { color: '#DC2626' }]}>
-                          {report.cancelledOrders ?? 0}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
                 </View>
 
                 {/* WhatsApp enquiries row */}
@@ -275,6 +259,14 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     paddingBottom: 28,
   },
+  stickyReportHeader: {
+    backgroundColor: '#F8F5FB',
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xs,
+    gap: spacing.md,
+    zIndex: 2,
+  },
   loadingWrap: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -289,6 +281,7 @@ const styles = StyleSheet.create({
   newButton: {
     backgroundColor: colors.primary,
     minHeight: 50,
+    marginBottom: spacing.sm,
     borderRadius: borderRadius.md,
     flexDirection: 'row',
     alignItems: 'center',
@@ -350,6 +343,12 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.sm,
     alignItems: 'center',
   },
+  summaryCodPill: {
+    backgroundColor: '#FFFBEB',
+  },
+  summaryPrepaidPill: {
+    backgroundColor: '#EFF6FF',
+  },
   summaryPillLabel: {
     fontSize: 10,
     fontWeight: '700',
@@ -357,9 +356,21 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   summaryPillValue: {
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: '900',
     color: colors.primary,
+  },
+  summaryCodLabel: {
+    color: '#92400E',
+  },
+  summaryCodValue: {
+    color: '#B45309',
+  },
+  summaryPrepaidLabel: {
+    color: '#1E40AF',
+  },
+  summaryPrepaidValue: {
+    color: '#1D4ED8',
   },
 
   // Report Card
@@ -442,6 +453,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
+  codMetricCard: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FDE68A',
+  },
+  prepaidMetricCard: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+  },
   metricCardTop: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -453,37 +472,23 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.textMuted,
   },
+  codMetricLabel: {
+    color: '#92400E',
+  },
+  prepaidMetricLabel: {
+    color: '#1E40AF',
+  },
   metricValue: {
-    fontSize: 18,
+    fontSize: 23,
     fontWeight: '900',
     color: colors.textPrimary,
     marginBottom: 6,
   },
-  orderPillsRow: {
-    flexDirection: 'row',
-    gap: 4,
+  codMetricValue: {
+    color: '#B45309',
   },
-  codPill: {
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  codPillText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#D97706',
-  },
-  prepaidPill: {
-    backgroundColor: '#DBEAFE',
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  prepaidPillText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#2563EB',
+  prepaidMetricValue: {
+    color: '#1D4ED8',
   },
 
   statusRow: {

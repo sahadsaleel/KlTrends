@@ -16,6 +16,7 @@ export interface IAttendance {
   isVerified?: boolean;
   location?: string;
   notes?: string;
+  lateCheckInReason?: string | null;
 
   earlyCheckoutReason?: string | null;
 
@@ -39,6 +40,7 @@ export class AttendanceModel implements IAttendance {
   isVerified?: boolean;
   location?: string;
   notes?: string;
+  lateCheckInReason?: string | null;
   earlyCheckoutReason?: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -58,6 +60,7 @@ export class AttendanceModel implements IAttendance {
     this.isVerified = Boolean(data.isVerified);
     this.location = data.location || undefined;
     this.notes = data.notes || undefined;
+    this.lateCheckInReason = data.lateCheckInReason || null;
     this.earlyCheckoutReason = data.earlyCheckoutReason || null;
     this.createdAt = data.createdAt ? new Date(data.createdAt) : new Date();
     this.updatedAt = data.updatedAt ? new Date(data.updatedAt) : new Date();
@@ -75,7 +78,7 @@ export class AttendanceModel implements IAttendance {
           userId = ?, date = ?, checkInTime = ?, checkOutTime = ?,
           workDurationMinutes = ?, status = ?, shiftStartTime = ?, shiftEndTime = ?,
           selfieUrl = ?, selfiePublicId = ?, isVerified = ?, location = ?, notes = ?,
-          earlyCheckoutReason = ?,
+          lateCheckInReason = ?, earlyCheckoutReason = ?,
           updatedAt = NOW()
         WHERE id = ?`,
         [
@@ -92,14 +95,15 @@ export class AttendanceModel implements IAttendance {
           this.isVerified ? 1 : 0,
           this.location || null,
           this.notes || null,
+          this.lateCheckInReason || null,
           this.earlyCheckoutReason || null,
           this.id,
         ]
       );
     } else {
       await query(
-        `INSERT INTO attendances (id, userId, date, checkInTime, checkOutTime, workDurationMinutes, status, shiftStartTime, shiftEndTime, selfieUrl, selfiePublicId, isVerified, location, notes, earlyCheckoutReason, createdAt, updatedAt)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+        `INSERT INTO attendances (id, userId, date, checkInTime, checkOutTime, workDurationMinutes, status, shiftStartTime, shiftEndTime, selfieUrl, selfiePublicId, isVerified, location, notes, lateCheckInReason, earlyCheckoutReason, createdAt, updatedAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
          ON DUPLICATE KEY UPDATE
           checkInTime = VALUES(checkInTime),
           checkOutTime = VALUES(checkOutTime),
@@ -110,6 +114,7 @@ export class AttendanceModel implements IAttendance {
           isVerified = VALUES(isVerified),
           location = VALUES(location),
           notes = VALUES(notes),
+          lateCheckInReason = VALUES(lateCheckInReason),
           earlyCheckoutReason = VALUES(earlyCheckoutReason),
           updatedAt = NOW()`,
         [
@@ -127,6 +132,7 @@ export class AttendanceModel implements IAttendance {
           this.isVerified ? 1 : 0,
           this.location || null,
           this.notes || null,
+          this.lateCheckInReason || null,
           this.earlyCheckoutReason || null,
         ]
       );
@@ -159,11 +165,50 @@ export const Attendance = {
   },
 
   async upsertCheckIn(userId: string, date: string, values: Partial<IAttendance>): Promise<IAttendance> {
-    const existing = await Attendance.findByUserAndDate(userId, date);
-    const attendance = existing || new AttendanceModel({ userId, date });
-    Object.assign(attendance, values, { userId, date });
-    await attendance.save();
-    return attendance;
+    const attendance = new AttendanceModel({ userId, date, ...values });
+    const insertResult = await query<any>(
+      `INSERT INTO attendances (id, userId, date, checkInTime, checkOutTime, workDurationMinutes, status, shiftStartTime, shiftEndTime, selfieUrl, selfiePublicId, isVerified, location, notes, lateCheckInReason, earlyCheckoutReason, createdAt, updatedAt)
+       VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NOW(), NOW())
+       ON DUPLICATE KEY UPDATE id = id`,
+      [
+        attendance.id, userId, date, attendance.checkInTime || new Date(),
+        attendance.workDurationMinutes, attendance.status, attendance.shiftStartTime,
+        attendance.shiftEndTime, attendance.selfieUrl || null, attendance.selfiePublicId || null,
+        attendance.isVerified ? 1 : 0, attendance.location || null, attendance.notes || null,
+        attendance.lateCheckInReason || null,
+      ]
+    );
+    if (insertResult.affectedRows === 0) {
+      const existing = await Attendance.findByUserAndDate(userId, date);
+      if (existing?.checkInTime) {
+        const error = new Error('Already checked in today.');
+        (error as any).statusCode = 409;
+        throw error;
+      }
+    }
+    await query(
+      `UPDATE attendances SET checkInTime = ?, status = ?, shiftStartTime = ?, shiftEndTime = ?,
+       selfieUrl = ?, selfiePublicId = ?, isVerified = ?, location = ?, notes = ?, lateCheckInReason = ?, updatedAt = NOW()
+       WHERE userId = ? AND date = ? AND checkInTime IS NULL`,
+      [
+        attendance.checkInTime || new Date(), attendance.status, attendance.shiftStartTime,
+        attendance.shiftEndTime, attendance.selfieUrl || null, attendance.selfiePublicId || null,
+        attendance.isVerified ? 1 : 0, attendance.location || null, attendance.notes || null,
+        attendance.lateCheckInReason || null, userId, date,
+      ]
+    );
+    const saved = await Attendance.findByUserAndDate(userId, date);
+    if (!saved) throw new Error('Attendance could not be recorded.');
+    return saved;
+  },
+
+  async checkOutIfOpen(userId: string, date: string, checkOutTime: Date, duration: number, reason: string | null): Promise<IAttendance | null> {
+    await query(
+      `UPDATE attendances SET checkOutTime = ?, workDurationMinutes = ?, earlyCheckoutReason = ?, updatedAt = NOW()
+       WHERE userId = ? AND date = ? AND checkInTime IS NOT NULL AND checkOutTime IS NULL`,
+      [checkOutTime, duration, reason, userId, date]
+    );
+    return Attendance.findByUserAndDate(userId, date);
   },
 
   async deleteByUser(userId: string): Promise<number> {

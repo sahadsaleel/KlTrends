@@ -15,6 +15,7 @@ export interface AttendanceRecord {
   isVerified?: boolean;
   location?: string;
   notes?: string;
+  lateCheckInReason?: string;
   earlyCheckoutReason?: string;
 }
 
@@ -29,6 +30,7 @@ export interface ActivityItem {
   durationText: string;
   status: 'PRESENT' | 'ABSENT' | 'LATE' | 'HALF_DAY';
   selfieUrl?: string;
+  lateCheckInReason?: string;
   earlyCheckoutReason?: string;
 }
 
@@ -64,6 +66,7 @@ export interface CheckInPayload {
   selfieImage?: string;
   location?: string;
   notes?: string;
+  lateCheckInReason?: string;
 }
 
 export interface CheckOutPayload {

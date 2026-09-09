@@ -1,4 +1,4 @@
-export const VALID_DEPARTMENTS = ['sales', 'manager', 'packaging', 'media'] as const;
+export const VALID_DEPARTMENTS = ['sales', 'manager', 'packaging'] as const;
 export type Department = (typeof VALID_DEPARTMENTS)[number];
 
 export interface User {

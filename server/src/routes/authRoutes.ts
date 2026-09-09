@@ -2,7 +2,6 @@ import { Router } from 'express';
 import {
   sendOtp,
   verifyOtp,
-  registerAdmin,
   loginAdmin,
   registerEmployee,
   loginEmployee,
@@ -21,8 +20,7 @@ const router = Router();
 router.post('/send-otp', sendOtp);
 router.post('/verify-otp', verifyOtp);
 
-// Admin Auth Endpoints (Username/Password)
-router.post('/register', registerAdmin);
+// Admin authentication is provisioned from server environment variables.
 router.post('/login', loginAdmin);
 
 // Employee Auth Endpoints (Username/Password)

@@ -47,6 +47,7 @@ class MediaActivityModel implements IMediaActivity {
 
 export interface MediaActivityFilter {
   activityType: MediaActivityType;
+  userId?: string;
   startDate?: string;
   endDate?: string;
   date?: string;
@@ -67,6 +68,10 @@ export const MediaActivity = {
   async findFiltered(filter: MediaActivityFilter): Promise<IMediaActivity[]> {
     const conditions = ['activityType = ?'];
     const params: any[] = [filter.activityType];
+    if (filter.userId) {
+      conditions.push('userId = ?');
+      params.push(filter.userId);
+    }
     if (filter.date) {
       conditions.push('date = ?');
       params.push(filter.date);
@@ -90,6 +95,10 @@ export const MediaActivity = {
   async getSummary(filter: MediaActivityFilter): Promise<{ totalVideos: number; totalRecords: number }> {
     const conditions = ['activityType = ?'];
     const params: any[] = [filter.activityType];
+    if (filter.userId) {
+      conditions.push('userId = ?');
+      params.push(filter.userId);
+    }
     if (filter.date) {
       conditions.push('date = ?');
       params.push(filter.date);

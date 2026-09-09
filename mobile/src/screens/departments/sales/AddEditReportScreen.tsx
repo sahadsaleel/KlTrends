@@ -49,12 +49,6 @@ export const AddEditReportScreen: React.FC<Props> = ({ route, navigation }) => {
   const [prepaidOrders, setPrepaidOrders] = useState(
     existing?.prepaidOrders !== undefined ? String(existing.prepaidOrders) : ''
   );
-  const [completedOrders, setCompletedOrders] = useState(
-    existing?.completedOrders !== undefined ? String(existing.completedOrders) : ''
-  );
-  const [cancelledOrders, setCancelledOrders] = useState(
-    existing?.cancelledOrders !== undefined ? String(existing.cancelledOrders) : ''
-  );
   const [saving, setSaving] = useState(false);
 
   // Auto-calculated Total Orders = COD Orders + Prepaid Orders
@@ -85,8 +79,6 @@ export const AddEditReportScreen: React.FC<Props> = ({ route, navigation }) => {
       codOrders: parseCount(codOrders),
       prepaidOrders: parseCount(prepaidOrders),
       totalOrders: autoCalculatedTotalOrders,
-      completedOrders: parseCount(completedOrders),
-      cancelledOrders: parseCount(cancelledOrders),
     };
 
     setSaving(true);
@@ -116,8 +108,7 @@ export const AddEditReportScreen: React.FC<Props> = ({ route, navigation }) => {
         AddReport: 'AddEditReport',
         ProductReturns: 'ProductReturns',
         DailyExpenses: 'DailyExpenses',
-        PackagingDuties: 'PackagingDuties',
-        MediaDuties: 'MediaDuties',
+        DailyPacking: 'DailyPacking',
         Profile: 'EditProfile',
       };
       navigation.navigate(destinations[tab] as any);
@@ -236,9 +227,6 @@ export const AddEditReportScreen: React.FC<Props> = ({ route, navigation }) => {
                 <View>
                   <View style={styles.autoCalcTitleRow}>
                     <Text style={styles.autoCalcTitle}>Total Orders</Text>
-                    <View style={styles.autoBadge}>
-                      <Text style={styles.autoBadgeText}>AUTO-CALCULATED</Text>
-                    </View>
                   </View>
                   <Text style={styles.autoCalcFormula}>
                     COD ({parseInt(codOrders, 10) || 0}) + Prepaid ({parseInt(prepaidOrders, 10) || 0})
@@ -248,25 +236,6 @@ export const AddEditReportScreen: React.FC<Props> = ({ route, navigation }) => {
               <Text style={styles.autoCalcValue}>{autoCalculatedTotalOrders}</Text>
             </View>
 
-            {/* Completed & Cancelled Orders */}
-            <View style={styles.twoColumnRow}>
-              <View style={{ flex: 1 }}>
-                {field(
-                  'Completed Orders',
-                  completedOrders,
-                  setCompletedOrders,
-                  'checkmark-done-circle-outline'
-                )}
-              </View>
-              <View style={{ flex: 1 }}>
-                {field(
-                  'Complete Order Cancel',
-                  cancelledOrders,
-                  setCancelledOrders,
-                  'close-circle-outline'
-                )}
-              </View>
-            </View>
           </View>
 
           {/* Primary Action Button */}

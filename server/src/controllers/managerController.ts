@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../types/index.js';
-import { ProductReturn, OrderSource } from '../models/ProductReturn.js';
-import { DailyExpense, EXPENSE_CATEGORIES } from '../models/DailyExpense.js';
+import { ProductReturn, OrderSource, ProductReturnFilter } from '../models/ProductReturn.js';
+import { DailyExpense, DailyExpenseFilter, EXPENSE_CATEGORIES } from '../models/DailyExpense.js';
 import { User } from '../models/User.js';
 
 const normalizeToIsoDate = (val: unknown): string | null => {
@@ -108,7 +108,9 @@ export const getProductReturns = async (req: AuthenticatedRequest, res: Response
 
     const { orderSource, startDate, endDate, date } = req.query;
 
-    const filter: any = {};
+    const filter: ProductReturnFilter = {
+      userId: req.user.role === 'admin' ? undefined : req.user.userId,
+    };
     if (typeof orderSource === 'string' && orderSource.trim() && orderSource !== 'all') {
       filter.orderSource = orderSource.toLowerCase().trim() as OrderSource;
     }
@@ -242,7 +244,9 @@ export const getDailyExpenses = async (req: AuthenticatedRequest, res: Response)
 
     const { category, startDate, endDate, date } = req.query;
 
-    const filter: any = {};
+    const filter: DailyExpenseFilter = {
+      userId: req.user.role === 'admin' ? undefined : req.user.userId,
+    };
     if (typeof category === 'string' && category.trim() && category !== 'all') {
       filter.category = category.toLowerCase().trim();
     }

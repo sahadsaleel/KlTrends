@@ -19,23 +19,19 @@ const validatePayload = (
   body: any
 ): Pick<
   IReport,
-  'date' | 'totalSalesAmount' | 'whatsappEnquiries' | 'totalOrders' | 'completedOrders' | 'cancelledOrders' | 'codOrders' | 'prepaidOrders'
+  'date' | 'totalSalesAmount' | 'whatsappEnquiries' | 'totalOrders' | 'codOrders' | 'prepaidOrders'
 > | null => {
   const totalSalesAmount = nonNegativeNumber(body.totalSalesAmount);
   const whatsappEnquiries = nonNegativeInteger(body.whatsappEnquiries);
   const codOrders = nonNegativeInteger(body.codOrders);
   const prepaidOrders = nonNegativeInteger(body.prepaidOrders);
-  const completedOrders = nonNegativeInteger(body.completedOrders);
-  const cancelledOrders = nonNegativeInteger(body.cancelledOrders);
 
   if (
     !validDate(body.date) ||
     totalSalesAmount === null ||
     whatsappEnquiries === null ||
     codOrders === null ||
-    prepaidOrders === null ||
-    completedOrders === null ||
-    cancelledOrders === null
+    prepaidOrders === null
   ) {
     return null;
   }
@@ -47,8 +43,6 @@ const validatePayload = (
     totalSalesAmount,
     whatsappEnquiries,
     totalOrders,
-    completedOrders,
-    cancelledOrders,
     codOrders,
     prepaidOrders,
   };
@@ -72,8 +66,6 @@ export const getAllReports = async (req: AuthenticatedRequest, res: Response): P
 
     const totalSales = reports.reduce((sum, report) => sum + report.totalSalesAmount, 0);
     const totalOrders = reports.reduce((sum, report) => sum + report.totalOrders, 0);
-    const completedOrders = reports.reduce((sum, report) => sum + report.completedOrders, 0);
-    const cancelledOrders = reports.reduce((sum, report) => sum + report.cancelledOrders, 0);
     const codOrders = reports.reduce((sum, report) => sum + report.codOrders, 0);
     const prepaidOrders = reports.reduce((sum, report) => sum + report.prepaidOrders, 0);
     const whatsappEnquiries = reports.reduce((sum, report) => sum + report.whatsappEnquiries, 0);
@@ -87,8 +79,6 @@ export const getAllReports = async (req: AuthenticatedRequest, res: Response): P
         summary: {
           totalSales,
           totalOrders,
-          completedOrders,
-          cancelledOrders,
           codOrders,
           prepaidOrders,
           whatsappEnquiries,
@@ -130,7 +120,7 @@ export const createReport = async (req: AuthenticatedRequest, res: Response): Pr
     if (!reportData) {
       res.status(400).json({
         success: false,
-        error: 'Provide a valid date, total sales amount, and order counts (COD, prepaid, completed, cancelled).',
+        error: 'Provide a valid date, total sales amount, and order counts (COD and prepaid).',
       });
       return;
     }
@@ -160,7 +150,7 @@ export const updateReport = async (req: AuthenticatedRequest, res: Response): Pr
     if (!reportData) {
       res.status(400).json({
         success: false,
-        error: 'Provide a valid date, total sales amount, and order counts (COD, prepaid, completed, cancelled).',
+        error: 'Provide a valid date, total sales amount, and order counts (COD and prepaid).',
       });
       return;
     }

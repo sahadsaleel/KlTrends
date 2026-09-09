@@ -25,6 +25,17 @@ export interface EarlyCheckoutItem {
   workDurationMinutes?: number;
 }
 
+export interface LateCheckInItem {
+  id: string;
+  userId: string;
+  fullName: string;
+  employeeId: string;
+  department: string;
+  avatarUrl?: string;
+  checkInTime: string;
+  reason: string;
+}
+
 export interface DashboardStats {
   totalEmployees: number;
   presentToday: number;
@@ -33,14 +44,13 @@ export interface DashboardStats {
   totalMonthlySales: number;
   totalMonthlyWhatsappEnquiries: number;
   totalMonthlyTotalOrders: number;
-  totalMonthlyCompletedOrders: number;
-  totalMonthlyCancelledOrders: number;
   totalMonthlyCodOrders: number;
   totalMonthlyPrepaidOrders: number;
   currentMonth: string;
   currentYear: number;
   topPerformers: TopPerformer[];
   earlyCheckouts?: EarlyCheckoutItem[];
+  lateCheckIns?: LateCheckInItem[];
 }
 
 export interface DashboardResponse {
@@ -64,6 +74,7 @@ export interface AdminEmployee {
   selfieUrl?: string | null;
   isVerified?: boolean;
   earlyCheckoutReason?: string | null;
+  lateCheckInReason?: string | null;
   checkInTime: string | null;
   checkOutTime: string | null;
 }
@@ -86,8 +97,6 @@ export interface EmployeeSales {
   totalSales: number;
   totalWhatsappEnquiries: number;
   totalOrders: number;
-  totalCompletedOrders: number;
-  totalCancelledOrders: number;
   totalCodOrders: number;
   totalPrepaidOrders: number;
   reportCount: number;
@@ -97,8 +106,6 @@ export interface AdminReportsSummary {
   totalSales: number;
   totalWhatsappEnquiries: number;
   totalOrders: number;
-  totalCompletedOrders: number;
-  totalCancelledOrders: number;
   totalCodOrders: number;
   totalPrepaidOrders: number;
   totalReports: number;
@@ -113,8 +120,6 @@ export interface AdminReportItem {
   totalSalesAmount: number;
   whatsappEnquiries: number;
   totalOrders: number;
-  completedOrders: number;
-  cancelledOrders: number;
   codOrders: number;
   prepaidOrders: number;
   createdAt: string;
@@ -299,7 +304,7 @@ export const adminApi = {
   downloadReport: async (
     period: 'daily' | 'monthly' | 'yearly',
     format: 'pdf' | 'excel',
-    params: { date?: string; month?: number; year?: number; department?: 'all' | 'sales' | 'manager' | 'packaging' | 'media' }
+    params: { date?: string; month?: number; year?: number; department?: 'all' | 'sales' | 'manager' | 'packaging' }
   ): Promise<{ success: boolean; data?: string; filename?: string; mimeType?: string; error?: string }> => {
     try {
       const response = await apiClient.get('/admin/reports/export', {

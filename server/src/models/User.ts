@@ -50,19 +50,15 @@ export class UserModel implements IUser {
     this.phone = data.phone || undefined;
     this.joiningDate = data.joiningDate || undefined;
     const normDept = data.department ? normalizeDepartment(data.department) : null;
-    this.department = normDept || (this.role === 'employee' ? 'sales' : undefined);
+    this.department = normDept || 'sales';
     this.avatarUrl = data.avatarUrl || undefined;
     this.createdAt = data.createdAt ? new Date(data.createdAt) : new Date();
     this.updatedAt = data.updatedAt ? new Date(data.updatedAt) : new Date();
   }
 
   async comparePassword(candidatePassword: string): Promise<boolean> {
-    if (!this.password) return false;
-    // Support bcrypt hashed passwords and direct comparison fallback
-    if (this.password.startsWith('$2a$') || this.password.startsWith('$2b$')) {
-      return await bcrypt.compare(candidatePassword, this.password);
-    }
-    return candidatePassword === this.password;
+    if (!this.password || !/^\$2[aby]\$/.test(this.password)) return false;
+    return bcrypt.compare(candidatePassword, this.password);
   }
 
   async save(): Promise<IUser> {
@@ -84,7 +80,7 @@ export class UserModel implements IUser {
           this.age !== undefined ? this.age : null,
           this.phone || null,
           this.joiningDate || null,
-          this.department || null,
+          this.department || 'sales',
           this.avatarUrl || null,
           this.id,
         ]
@@ -104,7 +100,7 @@ export class UserModel implements IUser {
           this.age !== undefined ? this.age : null,
           this.phone || null,
           this.joiningDate || null,
-          this.department || null,
+          this.department || 'sales',
           this.avatarUrl || null,
         ]
       );
@@ -162,7 +158,10 @@ export const User = {
 
   async create(data: any): Promise<IUser> {
     const id = data.id || uuidv4();
-    let password = data.password || 'Password123!';
+    let password = data.password;
+    if (typeof password !== 'string' || password.length < 10) {
+      throw new Error('A password of at least 10 characters is required.');
+    }
 
     // Hash password if not hashed
     if (!password.startsWith('$2a$') && !password.startsWith('$2b$')) {

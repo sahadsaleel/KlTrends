@@ -1,5 +1,7 @@
 import express, { Application } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 
 import healthRoutes from './routes/healthRoutes.js';
 import authRoutes from './routes/authRoutes.js';
@@ -15,16 +17,47 @@ import { errorHandler } from './middleware/errorHandler.js';
 
 const app: Application = express();
 
-app.use(cors());
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
 
-app.use(express.json({ limit: '50mb' }));
+app.use(helmet());
+app.use(cors({
+    origin: allowedOrigins.length > 0
+        ? (origin, callback) => {
+            if (!origin || allowedOrigins.includes(origin)) callback(null, true);
+            else callback(new Error('Origin not allowed by CORS'));
+        }
+        : process.env.NODE_ENV === 'production' ? false : true,
+}));
+
+app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({
-    limit: '50mb',
+        limit: '100kb',
     extended: true,
 }));
 
+const authLimiter = rateLimit({
+    windowMs: Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000),
+    limit: Number(process.env.AUTH_RATE_LIMIT_MAX || 100),
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: { success: false, error: 'Too many authentication requests. Please try again later.' },
+});
+const otpLimiter = rateLimit({
+    windowMs: Number(process.env.OTP_RATE_LIMIT_WINDOW_MS || 10 * 60 * 1000),
+    limit: Number(process.env.OTP_RATE_LIMIT_MAX || 10),
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: { success: false, error: 'Too many verification requests. Please try again later.' },
+});
+
 app.use('/api', healthRoutes);
-app.use('/api/auth', authRoutes);
+app.use('/api/auth/send-otp', otpLimiter);
+app.use('/api/auth/verify-otp', otpLimiter);
+app.use('/api/auth/verify-reset-otp', otpLimiter);
+app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/admin', adminRoutes);

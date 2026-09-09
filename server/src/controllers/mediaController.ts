@@ -76,10 +76,20 @@ export const getMediaActivities = (activityType: MediaActivityType) => async (
   res: Response
 ): Promise<void> => {
   try {
+    if (!req.user) {
+      res.status(401).json({ success: false, error: 'Unauthorized' });
+      return;
+    }
     const date = typeof req.query.date === 'string' ? normalizeDate(req.query.date) : undefined;
     const startDate = typeof req.query.startDate === 'string' ? normalizeDate(req.query.startDate) : undefined;
     const endDate = typeof req.query.endDate === 'string' ? normalizeDate(req.query.endDate) : undefined;
-    const filter = { activityType, date: date || undefined, startDate: startDate || undefined, endDate: endDate || undefined };
+    const filter = {
+      activityType,
+      userId: req.user.role === 'admin' ? undefined : req.user.userId,
+      date: date || undefined,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+    };
     const [activities, summary] = await Promise.all([
       MediaActivity.findFiltered(filter),
       MediaActivity.getSummary(filter),

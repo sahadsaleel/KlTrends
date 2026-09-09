@@ -64,12 +64,6 @@ const DEPARTMENT_OPTIONS: DepartmentOption[] = [
     iconName: 'cube-outline',
     description: 'Inventory & dispatch',
   },
-  {
-    key: 'media',
-    label: 'Media',
-    iconName: 'camera-outline',
-    description: 'Content & marketing',
-  },
 ];
 
 export const EmployeeRegisterScreen: React.FC<Props> = ({ navigation }) => {

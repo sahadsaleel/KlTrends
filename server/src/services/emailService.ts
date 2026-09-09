@@ -152,24 +152,19 @@ ${currentYear} KL Trends. All rights reserved.`;
 </html>
   `;
 
-  // Always log OTP to server console for instant testing
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log(`[NODEMAILER] 🔑 OTP for ${to} (${role} - ${purpose}): [ ${otp} ]`);
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-
   const smtpUser = process.env.SMTP_USER?.trim();
   const smtpPass = process.env.SMTP_PASS?.trim();
 
   if (!smtpUser || !smtpPass) {
-    console.log('[Nodemailer Info] SMTP not configured. OTP generated & logged in console.');
-    return true;
+    console.error('[Nodemailer] SMTP configuration is missing; verification email was not sent.');
+    return process.env.NODE_ENV !== 'production';
   }
 
   try {
     const mailer = getTransporter();
     if (!mailer) {
-      console.warn('[Nodemailer Warning] Transporter could not be created.');
-      return true;
+      console.error('[Nodemailer] Transporter could not be created.');
+      return false;
     }
 
     const fromAddress = process.env.SMTP_FROM || `"KL Trends Security" <${smtpUser}>`;
@@ -192,7 +187,7 @@ ${currentYear} KL Trends. All rights reserved.`;
     console.log(`[Nodemailer] ✅ Email successfully sent to ${to} (MessageId: ${info.messageId})`);
     return true;
   } catch (error: any) {
-    console.error('[Nodemailer Error] ❌ Failed to send email to', to, ':', error.message || error);
+    console.error('[Nodemailer Error] Failed to send verification email:', error?.code || error?.name || 'unknown error');
     return false;
   }
 };

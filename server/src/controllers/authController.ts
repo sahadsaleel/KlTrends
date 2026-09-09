@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { query } from '../config/db.js';
 import { User, IUser } from '../models/User.js';
 import { Otp } from '../models/Otp.js';
@@ -12,6 +13,8 @@ import { isValidDepartment, normalizeDepartment, VALID_DEPARTMENTS } from '../va
 const queueOtpEmail = (options: Parameters<typeof sendOtpEmail>[0]): void => {
   void sendOtpEmail(options).catch((error) => console.error('[Email] OTP delivery failed:', error));
 };
+
+const generateOtp = (): string => crypto.randomInt(100000, 1000000).toString();
 
 // Helper for password validation requirements
 const validatePasswordRequirements = (password: string): string | null => {
@@ -107,7 +110,7 @@ export const sendOtp = async (
       }
 
       const targetEmail = existingUser.email;
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const otp = generateOtp();
 
       // Delete previous forgot-password OTPs for this email
       await Otp.deleteForEmailAndPurpose(targetEmail, 'forgot-password');
@@ -139,6 +142,14 @@ export const sendOtp = async (
 
     // Handle Registration flow
     if (effectivePurpose === 'register') {
+      if (effectiveRole === 'admin') {
+        res.status(403).json({
+          success: false,
+          error: 'Administrator accounts are provisioned by the server and cannot be registered publicly.',
+        });
+        return;
+      }
+
       if (!email) {
         res.status(400).json({
           success: false,
@@ -165,21 +176,8 @@ export const sendOtp = async (
         return;
       }
 
-      // If registrationData with employeeId is provided, check uniqueness early
-      if (effectiveRole === 'employee' && registrationData?.employeeId) {
-        const cleanEmpId = registrationData.employeeId.trim();
-        const existingEmp = await User.findByEmployeeId(cleanEmpId);
-        if (existingEmp) {
-          res.status(409).json({
-            success: false,
-            error: 'An account with this Employee ID already exists.',
-          });
-          return;
-        }
-      }
-
       // Generate 6-digit OTP code
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const otp = generateOtp();
 
       await Otp.deleteForEmailAndPurpose(cleanEmail, 'register');
 
@@ -221,7 +219,7 @@ export const sendOtp = async (
         return;
       }
 
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const otp = generateOtp();
       await Otp.deleteForEmailAndPurpose(cleanEmail, 'login');
       await Otp.create({
         email: cleanEmail,
@@ -457,22 +455,22 @@ export const loginAdmin = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { username, email, identifier, password } = req.body;
-    const loginId = (identifier || username || email || '').trim();
+    const { username, password } = req.body;
+    const loginId = typeof username === 'string' ? username.trim() : '';
 
     if (!loginId || !password) {
       res.status(400).json({
         success: false,
-        error: 'Please enter your username/email and password',
+        error: 'Please enter your username and password',
       });
       return;
     }
 
-    const user = await User.findByUsernameOrEmail(loginId);
+    const user = await User.findByUsername(loginId);
     if (!user) {
       res.status(401).json({
         success: false,
-        error: 'Invalid username/email or password',
+        error: 'Invalid username or password',
       });
       return;
     }
@@ -481,7 +479,7 @@ export const loginAdmin = async (
     if (!isMatch) {
       res.status(401).json({
         success: false,
-        error: 'Invalid username/email or password',
+        error: 'Invalid username or password',
       });
       return;
     }
@@ -550,7 +548,7 @@ export const registerEmployee = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { fullName, username, employeeId, email, password, department, phone, otp } = req.body;
+    const { fullName, username, email, password, department, phone, otp } = req.body;
 
     if (!fullName || !email || !password) {
       res.status(400).json({
@@ -613,16 +611,7 @@ export const registerEmployee = async (
       return;
     }
 
-    // Auto-generate employee ID (EMP-11, EMP-12, EMP-13) if not supplied
-    let cleanEmpId = (employeeId || '').trim();
-    if (!cleanEmpId) {
-      cleanEmpId = await generateNextEmployeeId();
-    } else {
-      const existingEmpId = await User.findByEmployeeId(cleanEmpId);
-      if (existingEmpId) {
-        cleanEmpId = await generateNextEmployeeId();
-      }
-    }
+    const cleanEmpId = await generateNextEmployeeId();
 
     if (!otp) {
       res.status(400).json({ success: false, error: 'Email verification is required before creating an employee account.' });
@@ -783,7 +772,7 @@ export const forgotPassword = async (
     }
 
     const targetEmail = user.email;
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = generateOtp();
 
     // Clean up old reset OTPs
     await Otp.deleteForEmailAndPurpose(targetEmail, 'forgot-password');
@@ -1005,7 +994,7 @@ export const updateProfile = async (
       return;
     }
 
-    const { fullName, username, age, email, phone, employeeId, joiningDate, department, avatarUrl } = req.body;
+    const { fullName, username, age, email, phone, joiningDate, department, avatarUrl } = req.body;
 
     const user = await User.findById(req.user.userId);
     if (!user) {
@@ -1036,7 +1025,6 @@ export const updateProfile = async (
     if (fullName !== undefined) user.fullName = fullName.trim();
     if (age !== undefined) user.age = Number(age) || 0;
     if (phone !== undefined) user.phone = phone.trim();
-    if (employeeId !== undefined) user.employeeId = employeeId.trim();
     if (joiningDate !== undefined) user.joiningDate = joiningDate.trim();
     if (department !== undefined) {
       const requestedDepartment = typeof department === 'string' ? department.trim().toLowerCase() : '';

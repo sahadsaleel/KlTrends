@@ -24,7 +24,7 @@ export const checkIn = async (req: AuthenticatedRequest, res: Response): Promise
       return;
     }
 
-    const { selfieImage, location, notes } = req.body;
+    const { selfieImage, location, notes, lateCheckInReason } = req.body;
 
     const now = new Date();
     const todayStr = formatDateString(now);
@@ -41,18 +41,33 @@ export const checkIn = async (req: AuthenticatedRequest, res: Response): Promise
       return;
     }
 
+    // Determine if late (shift starts at 10:00 AM)
+    const shiftStart = new Date(now);
+    shiftStart.setHours(10, 0, 0, 0);
+    const isLate = now > shiftStart;
+
+    const lateReason = typeof lateCheckInReason === 'string' ? lateCheckInReason.trim() : '';
+    if (isLate && !lateReason) {
+      res.status(400).json({
+        success: false,
+        error: 'Please provide a reason for checking in late.',
+      });
+      return;
+    }
+
     let selfieUrl: string | undefined = undefined;
     let selfiePublicId: string | undefined = undefined;
     let isVerified = false;
 
-    // Upload selfie image to Cloudinary if provided
+    // Upload selfie image to Cloudinary after late-reason validation.
     if (selfieImage) {
       try {
         console.log(`[Attendance] Uploading selfie to Cloudinary for user ${userId}...`);
         const uploadRes = await uploadAttendanceSelfie(selfieImage, userId);
         selfieUrl = uploadRes.url;
         selfiePublicId = uploadRes.publicId;
-        isVerified = true;
+        // Uploading an image is not face recognition or liveness verification.
+        isVerified = false;
         console.log(`[Attendance] Selfie uploaded successfully: ${selfieUrl}`);
       } catch (uploadError: any) {
         console.error('[Attendance] Cloudinary selfie upload error:', uploadError);
@@ -64,11 +79,6 @@ export const checkIn = async (req: AuthenticatedRequest, res: Response): Promise
       }
     }
 
-    // Determine if late (shift starts at 10:00 AM)
-    const shiftStart = new Date(now);
-    shiftStart.setHours(10, 0, 0, 0);
-    const isLate = now > shiftStart;
-
     // Atomic find-and-modify with upsert to prevent race conditions or duplicate key errors
     const updatedAttendance = await Attendance.upsertCheckIn(userId, todayStr, {
       checkInTime: now,
@@ -76,16 +86,20 @@ export const checkIn = async (req: AuthenticatedRequest, res: Response): Promise
       ...(selfieUrl && { selfieUrl, selfiePublicId, isVerified }),
       ...(location && { location }),
       ...(notes && { notes }),
+      ...(isLate && { lateCheckInReason: lateReason }),
     });
 
     res.status(200).json({
       success: true,
-      message: 'Check-in successful! Face verified and attendance recorded.',
+      message: 'Check-in successful! Attendance recorded.',
       data: updatedAttendance,
     });
   } catch (error: any) {
     console.error('Error during check-in:', error);
-    res.status(500).json({ success: false, error: error.message || 'Server error during check-in' });
+    res.status(error.statusCode || 500).json({
+      success: false,
+      error: error.statusCode ? error.message : 'Server error during check-in',
+    });
   }
 };
 
@@ -124,10 +138,9 @@ export const checkOut = async (req: AuthenticatedRequest, res: Response): Promis
       return;
     }
 
-    // Set check out time and calculate work duration in minutes
-    attendance.checkOutTime = now;
+    // Calculate duration, then let the database conditionally claim the open checkout.
     const diffMs = now.getTime() - new Date(attendance.checkInTime).getTime();
-    attendance.workDurationMinutes = Math.max(0, Math.round(diffMs / (1000 * 60)));
+    const workDurationMinutes = Math.max(0, Math.round(diffMs / (1000 * 60)));
 
     const { earlyCheckoutReason, reason } = req.body;
 
@@ -158,18 +171,22 @@ export const checkOut = async (req: AuthenticatedRequest, res: Response): Promis
     }
 
     // Save the actual selected reason
-    if (isEarly) {
-      attendance.earlyCheckoutReason = checkoutReason;
-    } else {
-      attendance.earlyCheckoutReason = null;
+    const updatedAttendance = await Attendance.checkOutIfOpen(
+      userId,
+      todayStr,
+      now,
+      workDurationMinutes,
+      isEarly ? checkoutReason : null,
+    );
+    if (!updatedAttendance || !updatedAttendance.checkOutTime) {
+      res.status(409).json({ success: false, error: 'Attendance was checked out by another request.' });
+      return;
     }
-
-    await attendance.save();
 
     res.status(200).json({
       success: true,
       message: 'Check-out successful!',
-      data: attendance,
+      data: updatedAttendance,
     });
 
     return;
@@ -317,6 +334,7 @@ export const getMonthlyAttendance = async (req: AuthenticatedRequest, res: Respo
         durationText,
         status: rec.status,
         selfieUrl: rec.selfieUrl,
+        lateCheckInReason: rec.lateCheckInReason || null,
         earlyCheckoutReason: rec.earlyCheckoutReason || null,
       };
     });

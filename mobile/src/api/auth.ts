@@ -22,7 +22,6 @@ export interface SendOtpPayload {
   registrationData?: {
     username?: string;
     fullName?: string;
-    employeeId?: string;
     password?: string;
     department?: string;
     phone?: string;
@@ -81,36 +80,8 @@ export const authApi = {
     }
   },
 
-  // Admin Auth (Username / Password)
-  register: async (payload: {
-    username: string;
-    email: string;
-    password: string;
-    fullName?: string;
-    otp?: string;
-  }): Promise<AuthResponse> => {
-    try {
-      const response = await apiClient.post<AuthResponse>('/auth/register', payload);
-      if (response.data.token) {
-        setAuthToken(response.data.token);
-      }
-      if (response.data.user) {
-        response.data.user.role = 'admin';
-      }
-      return response.data;
-    } catch (error: any) {
-      return {
-        success: false,
-        status: error.response?.status,
-        error: formatApiError(error, 'Registration failed.'),
-      };
-    }
-  },
-
   login: async (payload: {
-    identifier?: string;
-    username?: string;
-    email?: string;
+    username: string;
     password: string;
   }): Promise<AuthResponse> => {
     try {
@@ -135,7 +106,6 @@ export const authApi = {
   employeeRegister: async (payload: {
     fullName: string;
     username?: string;
-    employeeId?: string;
     email: string;
     password: string;
     department: string;
@@ -248,7 +218,6 @@ export const authApi = {
     age?: number;
     email?: string;
     phone?: string;
-    employeeId?: string;
     joiningDate?: string;
     avatarUrl?: string;
   }): Promise<AuthResponse> => {

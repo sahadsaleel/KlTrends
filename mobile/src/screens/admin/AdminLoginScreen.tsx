@@ -25,7 +25,7 @@ import { RootStackParamList } from '../../navigation/RootNavigator';
 type Props = NativeStackScreenProps<RootStackParamList, 'AdminLogin'>;
 
 interface AdminLoginFormData {
-  identifier: string;
+  username: string;
   password: string;
 }
 
@@ -40,7 +40,7 @@ export const AdminLoginScreen: React.FC<Props> = ({ navigation }) => {
     formState: { errors },
   } = useForm<AdminLoginFormData>({
     defaultValues: {
-      identifier: '',
+      username: '',
       password: '',
     },
   });
@@ -50,11 +50,11 @@ export const AdminLoginScreen: React.FC<Props> = ({ navigation }) => {
       setLoading(true);
       setServerError(null);
 
-      const identifier = data.identifier.trim();
+      const username = data.username.trim();
       const password = data.password;
 
       const response = await authApi.login({
-        identifier,
+        username,
         password,
       });
 
@@ -105,7 +105,7 @@ export const AdminLoginScreen: React.FC<Props> = ({ navigation }) => {
 
             <Text style={styles.title}>Admin Portal</Text>
             <Text style={styles.subtitle}>
-              Sign in with your administrator username or email
+              Sign in with your administrator username and password
             </Text>
 
             {serverError && (
@@ -119,20 +119,20 @@ export const AdminLoginScreen: React.FC<Props> = ({ navigation }) => {
               {/* Username or Email */}
               <Controller
                 control={control}
-                name="identifier"
+                name="username"
                 rules={{
-                  required: 'Administrator username or email is required',
+                  required: 'Administrator username is required',
                 }}
                 render={({ field: { onChange, onBlur, value } }) => (
                   <Input
-                    label="Admin Username or Corporate Email"
-                    placeholder="Enter username or email"
+                    label="Admin Username"
+                    placeholder="Enter username"
                     iconName="person-outline"
                     autoCapitalize="none"
                     onBlur={onBlur}
                     onChangeText={onChange}
                     value={value}
-                    error={errors.identifier?.message}
+                    error={errors.username?.message}
                   />
                 )}
               />
@@ -177,16 +177,6 @@ export const AdminLoginScreen: React.FC<Props> = ({ navigation }) => {
               />
             </View>
 
-            {/* Footer Navigation */}
-            <View style={styles.footerRow}>
-              <Text style={styles.footerText}>New administrator? </Text>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('AdminRegister')}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.footerLink}>Create an account</Text>
-              </TouchableOpacity>
-            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

@@ -15,7 +15,9 @@ export const errorHandler = (
   const statusCode = err.statusCode || (databaseUnavailable ? 503 : 500);
   const message = databaseUnavailable
     ? 'Database is temporarily unavailable. Please try again in a moment.'
-    : err.message || 'Internal Server Error';
+    : process.env.NODE_ENV === 'production'
+      ? 'Internal server error.'
+      : err.message || 'Internal Server Error';
 
   console.error(`[Error] ${req.method} ${req.url} - Status: ${statusCode} - ${message}`);
 

@@ -59,6 +59,7 @@ export const AttendanceScreen: React.FC<Props> = ({ navigation }) => {
   const [todayStatusText, setTodayStatusText] = useState<string>('PRESENT');
   const [workDurationMinutes, setWorkDurationMinutes] = useState<number>(0);
   const [todayEarlyCheckoutReason, setTodayEarlyCheckoutReason] = useState<string | null>(null);
+  const [todayLateCheckInReason, setTodayLateCheckInReason] = useState<string | null>(null);
 
   const [loading, setLoading] = useState<boolean>(true);
   const [actionLoading, setActionLoading] = useState<boolean>(false);
@@ -69,6 +70,9 @@ export const AttendanceScreen: React.FC<Props> = ({ navigation }) => {
   const [calendarVisible, setCalendarVisible] = useState<boolean>(false);
   const [selfiePreviewModalVisible, setSelfiePreviewModalVisible] = useState<boolean>(false);
   const [earlyCheckoutModalVisible, setEarlyCheckoutModalVisible] = useState<boolean>(false);
+  const [lateCheckInModalVisible, setLateCheckInModalVisible] = useState<boolean>(false);
+  const [lateCheckInReason, setLateCheckInReason] = useState('');
+  const [pendingLateCheckInReason, setPendingLateCheckInReason] = useState<string | null>(null);
   const [selectedPreset, setSelectedPreset] = useState<string>('');
   const [customReasonText, setCustomReasonText] = useState<string>('');
 
@@ -141,6 +145,7 @@ export const AttendanceScreen: React.FC<Props> = ({ navigation }) => {
         } else {
           setTodayEarlyCheckoutReason(null);
         }
+        setTodayLateCheckInReason(att.lateCheckInReason || null);
       } else {
         setIsCheckedIn(false);
         setIsCheckedOut(false);
@@ -149,6 +154,7 @@ export const AttendanceScreen: React.FC<Props> = ({ navigation }) => {
         setTodaySelfieUrl(null);
         setIsFaceVerified(false);
         setTodayEarlyCheckoutReason(null);
+        setTodayLateCheckInReason(null);
       }
 
       // Apply monthly logs and summary stats
@@ -186,13 +192,35 @@ export const AttendanceScreen: React.FC<Props> = ({ navigation }) => {
       Alert.alert('Already Checked In', `You checked in today at ${checkInTimestamp || '10:00 AM'}.`);
       return;
     }
+    const now = new Date();
+    const shiftStart = new Date(now);
+    shiftStart.setHours(10, 0, 0, 0);
+    if (now > shiftStart) {
+      setLateCheckInReason('');
+      setLateCheckInModalVisible(true);
+      return;
+    }
+    setSelfieModalVisible(true);
+  };
+
+  const confirmLateCheckInReason = () => {
+    const reason = lateCheckInReason.trim();
+    if (!reason) {
+      Alert.alert('Reason Required', 'Please enter a reason for checking in late.');
+      return;
+    }
+    setPendingLateCheckInReason(reason);
+    setLateCheckInModalVisible(false);
     setSelfieModalVisible(true);
   };
 
   // Process selfie check-in with Cloudinary upload
   const handleConfirmCheckInWithSelfie = async (selfieBase64: string): Promise<boolean> => {
     setActionLoading(true);
-    const res = await attendanceApi.checkIn({ selfieImage: selfieBase64 });
+    const res = await attendanceApi.checkIn({
+      selfieImage: selfieBase64,
+      lateCheckInReason: pendingLateCheckInReason || undefined,
+    });
     setActionLoading(false);
 
     if (res.success && res.data) {
@@ -207,6 +235,7 @@ export const AttendanceScreen: React.FC<Props> = ({ navigation }) => {
         setTodaySelfieUrl(res.data.selfieUrl);
       }
       setIsFaceVerified(true);
+      setPendingLateCheckInReason(null);
       if (res.data.status) {
         setTodayStatusText(res.data.status);
       }
@@ -323,11 +352,8 @@ export const AttendanceScreen: React.FC<Props> = ({ navigation }) => {
         case 'DailyExpenses':
           navigation.navigate('DailyExpenses' as any);
           break;
-        case 'PackagingDuties':
-          navigation.navigate('PackagingDuties' as any);
-          break;
-        case 'MediaDuties':
-          navigation.navigate('MediaDuties' as any);
+        case 'DailyPacking':
+          navigation.navigate('DailyPacking' as any);
           break;
         case 'Profile':
           navigation.navigate('EditProfile');
@@ -357,7 +383,9 @@ export const AttendanceScreen: React.FC<Props> = ({ navigation }) => {
         {/* Main Attendance Clock & Action Card */}
         <View style={styles.mainCard}>
           <Text style={styles.currentTimeLabel}>CURRENT TIME</Text>
-          <Text style={styles.clockDisplay}>{formattedTime}</Text>
+          <Text style={styles.clockDisplay} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+            {formattedTime}
+          </Text>
           <Text style={styles.dateDisplay}>{formattedDate}</Text>
 
           {/* Action Buttons Row */}
@@ -597,6 +625,14 @@ export const AttendanceScreen: React.FC<Props> = ({ navigation }) => {
                         </Text>
                       </View>
                     )}
+                    {item.lateCheckInReason && (
+                      <View style={styles.activityLateBox}>
+                        <Ionicons name="alert-circle-outline" size={13} color="#B45309" />
+                        <Text style={styles.activityLateText} numberOfLines={2}>
+                          Late Check-In: {item.lateCheckInReason}
+                        </Text>
+                      </View>
+                    )}
                   </View>
                 );
               })
@@ -614,6 +650,58 @@ export const AttendanceScreen: React.FC<Props> = ({ navigation }) => {
         onConfirmCheckIn={handleConfirmCheckInWithSelfie}
         employeeName={user?.fullName || user?.username}
       />
+
+      <Modal
+        animationType="fade"
+        transparent
+        visible={lateCheckInModalVisible}
+        onRequestClose={() => setLateCheckInModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.earlyModalCard}>
+            <View style={styles.earlyModalHeader}>
+              <View style={styles.earlyModalIconWrap}>
+                <Ionicons name="alert-circle" size={24} color="#D97706" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.earlyModalTitle}>Late Check-In</Text>
+                <Text style={styles.earlyModalSub}>Shift starts at 10:00 AM</Text>
+              </View>
+              <TouchableOpacity onPress={() => setLateCheckInModalVisible(false)}>
+                <Ionicons name="close-circle" size={26} color="#9CA3AF" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.earlyNoticeBanner}>
+              <Ionicons name="information-circle" size={18} color="#B45309" />
+              <Text style={styles.earlyNoticeText}>
+                You are checking in after the scheduled start time. Please provide a reason.
+              </Text>
+            </View>
+            <Text style={styles.presetSectionTitle}>Reason for late check-in *</Text>
+            <TextInput
+              style={styles.reasonInput}
+              placeholder="e.g. Traffic, transport delay, emergency..."
+              placeholderTextColor="#9CA3AF"
+              value={lateCheckInReason}
+              onChangeText={setLateCheckInReason}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+            />
+            <View style={styles.earlyModalBtnRow}>
+              <TouchableOpacity style={styles.cancelEarlyBtn} onPress={() => setLateCheckInModalVisible(false)}>
+                <Text style={styles.cancelEarlyBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.submitEarlyBtn} onPress={confirmLateCheckInReason}>
+                <Text style={styles.submitEarlyBtnText}>Continue to Check-In</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* Full-size Selfie Inspector Modal */}
       {todaySelfieUrl && (
@@ -838,10 +926,13 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   clockDisplay: {
-    fontSize: 38,
+    width: '100%',
+    fontSize: 34,
+    lineHeight: 42,
     fontWeight: '900',
     color: colors.primaryDark,
-    letterSpacing: 0.5,
+    letterSpacing: 0,
+    textAlign: 'center',
   },
   dateDisplay: {
     fontSize: 14,
@@ -1177,6 +1268,24 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#92400E',
+    marginLeft: 4,
+  },
+  activityLateBox: {
+    marginTop: spacing.xs,
+    marginLeft: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF7ED',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+  },
+  activityLateText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#9A3412',
     marginLeft: 4,
   },
 

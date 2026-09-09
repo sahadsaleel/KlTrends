@@ -27,7 +27,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'AdminReportDownload'>;
 
 type Period = 'daily' | 'monthly' | 'yearly';
 type Format = 'pdf' | 'excel';
-type ReportDepartment = 'all' | 'sales' | 'manager' | 'packaging' | 'media';
+type ReportDepartment = 'all' | 'sales' | 'manager' | 'packaging';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -354,7 +354,6 @@ export const AdminReportDownloadScreen: React.FC<Props> = ({ navigation }) => {
               ['sales', 'Sales'],
               ['manager', 'Manager'],
               ['packaging', 'Packaging'],
-              ['media', 'Media'],
             ] as const).map(([value, label]) => (
               <TouchableOpacity
                 key={value}

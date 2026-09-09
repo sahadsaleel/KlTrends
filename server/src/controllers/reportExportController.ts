@@ -19,8 +19,6 @@ type ExportRow = {
   totalOrders: number;
   codOrders: number;
   prepaidOrders: number;
-  completedOrders: number;
-  cancelledOrders: number;
   activityType?: string;
   orderSource?: string;
   category?: string;
@@ -59,6 +57,18 @@ const range = (params: Record<string, any>) => {
 
 type ExportColumn = { header: string; key: keyof ExportRow; width: number; align?: 'left' | 'center' | 'right' };
 
+const totalsRowFor = (rows: ExportRow[]): ExportRow => ({
+  employeeName: `TOTALS (${rows.length} records)`,
+  employeeId: '',
+  department: '',
+  date: '',
+  totalSalesAmount: rows.reduce((sum, row) => sum + row.totalSalesAmount, 0),
+  whatsappEnquiries: rows.reduce((sum, row) => sum + row.whatsappEnquiries, 0),
+  totalOrders: rows.reduce((sum, row) => sum + row.totalOrders, 0),
+  codOrders: rows.reduce((sum, row) => sum + row.codOrders, 0),
+  prepaidOrders: rows.reduce((sum, row) => sum + row.prepaidOrders, 0),
+});
+
 const salesColumns: ExportColumn[] = [
   { header: 'Employee Name', key: 'employeeName', width: 110, align: 'left' },
   { header: 'Emp ID', key: 'employeeId', width: 55, align: 'center' },
@@ -69,8 +79,6 @@ const salesColumns: ExportColumn[] = [
   { header: 'Total Orders', key: 'totalOrders', width: 65, align: 'right' },
   { header: 'COD', key: 'codOrders', width: 45, align: 'right' },
   { header: 'Prepaid', key: 'prepaidOrders', width: 50, align: 'right' },
-  { header: 'Completed', key: 'completedOrders', width: 60, align: 'right' },
-  { header: 'Cancelled', key: 'cancelledOrders', width: 55, align: 'right' },
 ];
 
 const columnsFor = (department: string): ExportColumn[] => {
@@ -124,8 +132,6 @@ const rowsFor = async (start: string, end: string, department?: string): Promise
       totalOrders: Number(report.totalOrders) || 0,
       codOrders: Number(report.codOrders) || 0,
       prepaidOrders: Number(report.prepaidOrders) || 0,
-      completedOrders: Number(report.completedOrders) || 0,
-      cancelledOrders: Number(report.cancelledOrders) || 0,
     };
   }).filter((row): row is ExportRow => row !== null);
 };
@@ -139,11 +145,11 @@ const activityRowsFor = async (start: string, end: string, department: string): 
     return [
       ...returns.map((record) => ({
         employeeName: record.employeeName || '--', employeeId: record.employeeId || '--', department: 'manager', date: record.date,
-        totalSalesAmount: 0, whatsappEnquiries: 0, totalOrders: record.returnQuantity, codOrders: 0, prepaidOrders: 0, completedOrders: 0, cancelledOrders: 0, category: 'Product Return',
+        totalSalesAmount: 0, whatsappEnquiries: 0, totalOrders: record.returnQuantity, codOrders: 0, prepaidOrders: 0, category: 'Product Return',
       })),
       ...expenses.map((record) => ({
         employeeName: record.employeeName || '--', employeeId: record.employeeId || '--', department: 'manager', date: record.date,
-        totalSalesAmount: record.amount, whatsappEnquiries: 0, totalOrders: 0, codOrders: 0, prepaidOrders: 0, completedOrders: 0, cancelledOrders: 0, category: record.category,
+        totalSalesAmount: record.amount, whatsappEnquiries: 0, totalOrders: 0, codOrders: 0, prepaidOrders: 0, category: record.category,
       })),
     ];
   }
@@ -153,7 +159,7 @@ const activityRowsFor = async (start: string, end: string, department: string): 
     return records.map((record) => ({
       employeeName: record.employeeName || '--', employeeId: record.employeeId || '--', department: 'packaging', date: record.date,
       totalSalesAmount: 0, whatsappEnquiries: 0, totalOrders: record.ordersPacked, codOrders: record.orderSource === 'kltrends' ? record.ordersPacked : 0,
-      prepaidOrders: record.orderSource === 'klindia' ? record.ordersPacked : 0, completedOrders: 0, cancelledOrders: 0, orderSource: record.orderSource,
+      prepaidOrders: record.orderSource === 'klindia' ? record.ordersPacked : 0, orderSource: record.orderSource,
     }));
   }
 
@@ -164,7 +170,7 @@ const activityRowsFor = async (start: string, end: string, department: string): 
   return [...shoots, ...out].map((record) => ({
     employeeName: record.employeeName || '--', employeeId: record.employeeId || '--', department: 'media', date: record.date,
     totalSalesAmount: 0, whatsappEnquiries: 0, totalOrders: record.totalVideos, codOrders: record.activityType === 'video-shoot' ? record.totalVideos : 0,
-    prepaidOrders: record.activityType === 'video-out' ? record.totalVideos : 0, completedOrders: 0, cancelledOrders: 0, activityType: record.activityType,
+    prepaidOrders: record.activityType === 'video-out' ? record.totalVideos : 0, activityType: record.activityType,
   }));
 };
 
@@ -206,8 +212,6 @@ const generatePdfBuffer = (
       const totalOrders = rows.reduce((s, r) => s + r.totalOrders, 0);
       const totalCod = rows.reduce((s, r) => s + r.codOrders, 0);
       const totalPrepaid = rows.reduce((s, r) => s + r.prepaidOrders, 0);
-      const totalCompleted = rows.reduce((s, r) => s + r.completedOrders, 0);
-      const totalCancelled = rows.reduce((s, r) => s + r.cancelledOrders, 0);
 
       const drawHeaderBanner = (isFirstPage: boolean) => {
         // Brand Header Box
@@ -243,7 +247,7 @@ const generatePdfBuffer = (
 
         const cards = [
           { label: 'TOTAL SALES REVENUE', val: formatCurrency(totalSales), color: '#059669', bg: '#ECFDF5' },
-          { label: 'TOTAL ORDERS', val: `${totalOrders.toLocaleString('en-IN')} (${totalCompleted} Done)`, color: '#2563EB', bg: '#EFF6FF' },
+          { label: 'TOTAL ORDERS', val: totalOrders.toLocaleString('en-IN'), color: '#2563EB', bg: '#EFF6FF' },
           { label: 'WHATSAPP ENQUIRIES', val: totalEnquiries.toLocaleString('en-IN'), color: '#7C3AED', bg: '#F5F3FF' },
           { label: 'PAYMENT SPLIT', val: `COD: ${totalCod} | Prep: ${totalPrepaid}`, color: '#D97706', bg: '#FFFBEB' },
         ];
@@ -346,8 +350,6 @@ const generatePdfBuffer = (
         totalOrders: totalOrders.toLocaleString('en-IN'),
         codOrders: totalCod.toLocaleString('en-IN'),
         prepaidOrders: totalPrepaid.toLocaleString('en-IN'),
-        completedOrders: totalCompleted.toLocaleString('en-IN'),
-        cancelledOrders: totalCancelled.toLocaleString('en-IN'),
       };
 
       let currentX = startTableX;
@@ -445,6 +447,26 @@ const generateAllDepartmentsPdfBuffer = (
 
       if (!departmentRows.length) {
         doc.font('Helvetica').fontSize(10).fillColor('#6B7280').text('No records for this department in the selected period.', startX, y + 14);
+      } else {
+        const totals = totalsRowFor(departmentRows);
+        if (y > doc.page.height - 45) {
+          doc.addPage();
+          y = 35;
+        }
+        x = startX;
+        doc.rect(startX, y, totalWidth * scale, 22).fill('#EDE9FE');
+        doc.rect(startX, y, totalWidth * scale, 22).strokeColor('#C4B5FD').lineWidth(1).stroke();
+        departmentColumns.forEach((column) => {
+          const rawValue = totals[column.key];
+          const value = column.key === 'totalSalesAmount'
+            ? formatCurrency(Number(rawValue) || 0)
+            : typeof rawValue === 'number'
+            ? rawValue.toLocaleString('en-IN')
+            : String(rawValue || '');
+          const width = column.width * scale;
+          doc.font('Helvetica-Bold').fontSize(7).fillColor('#570490').text(value, x + 3, y + 7, { width: width - 6, align: column.align || 'left' });
+          x += width;
+        });
       }
     });
     doc.end();
@@ -488,12 +510,24 @@ export const exportEmployeeReports = async (req: AuthenticatedRequest, res: Resp
         const targetSheet = sheetIndex === 0 ? sheet : workbook.addWorksheet(exportDepartment.charAt(0).toUpperCase() + exportDepartment.slice(1));
         targetSheet.name = exportDepartment.charAt(0).toUpperCase() + exportDepartment.slice(1);
         targetSheet.columns = exportColumns.map((column) => ({ header: column.header, key: column.key, width: Math.max(14, Math.round(column.width / 4)) }));
-        rows.filter((row) => row.department.toLowerCase() === exportDepartment).forEach((row) => targetSheet.addRow(row));
+        const departmentRows = rows.filter((row) => row.department.toLowerCase() === exportDepartment);
+        departmentRows.forEach((row) => targetSheet.addRow(row));
+        if (departmentRows.length > 0) {
+          const totalRow = targetSheet.addRow(totalsRowFor(departmentRows));
+          totalRow.font = { bold: true, color: { argb: 'FF570490' } };
+          totalRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEDE9FE' } };
+          totalRow.eachCell((cell) => {
+            cell.border = {
+              top: { style: 'thin', color: { argb: 'FFC4B5FD' } },
+              bottom: { style: 'thin', color: { argb: 'FFC4B5FD' } },
+            };
+          });
+        }
         targetSheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
         targetSheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF570490' } };
         exportColumns.forEach((column, index) => {
           if (column.key === 'totalSalesAmount') targetSheet.getColumn(index + 1).numFmt = '₹#,##0.00';
-          if (['totalOrders', 'whatsappEnquiries', 'codOrders', 'prepaidOrders', 'completedOrders', 'cancelledOrders'].includes(column.key)) targetSheet.getColumn(index + 1).numFmt = '#,##0';
+          if (['totalOrders', 'whatsappEnquiries', 'codOrders', 'prepaidOrders'].includes(column.key)) targetSheet.getColumn(index + 1).numFmt = '#,##0';
         });
       });
       const buffer = await workbook.xlsx.writeBuffer();

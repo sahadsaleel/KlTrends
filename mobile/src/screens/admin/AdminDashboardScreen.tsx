@@ -34,15 +34,13 @@ import {
   AdminReportsSummary,
 } from '../../api/admin';
 import { DailyExpense, managerApi, ProductReturn } from '../../api/manager';
-import { MediaActivitiesResponse } from '../../api/media';
-import { mediaApi } from '../../api/media';
 import { PackingListResponse } from '../../api/packaging';
 import { packagingApi } from '../../api/packaging';
 import { EARLY_REASON_PRESETS } from '../common/AttendanceScreen';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AdminDashboard'>;
 type ActiveSection = 'overview' | 'employees' | 'reports';
-type ReportDepartment = 'sales' | 'manager' | 'packaging' | 'media';
+type ReportDepartment = 'sales' | 'manager' | 'packaging';
 
 const getTodayDate = () =>
   new Date().toLocaleDateString('en-US', {
@@ -69,10 +67,6 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
     expenses: DailyExpense[];
   }>({ returns: [], expenses: [] });
   const [packagingReportData, setPackagingReportData] = useState<PackingListResponse['data']>();
-  const [mediaReportData, setMediaReportData] = useState<{
-    shoots: MediaActivitiesResponse['data'];
-    out: MediaActivitiesResponse['data'];
-  }>({ shoots: undefined, out: undefined });
   const [selectedSelfieEmployee, setSelectedSelfieEmployee] = useState<AdminEmployee | null>(null);
   const [selfieModalVisible, setSelfieModalVisible] = useState(false);
   const [selectedEmployeeDetails, setSelectedEmployeeDetails] = useState<AdminEmployee | null>(null);
@@ -106,15 +100,13 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
 
   const fetchData = useCallback(async () => {
     try {
-      const [dashRes, empRes, repRes, returnsRes, expensesRes, packagingRes, shootsRes, outRes] = await Promise.all([
+      const [dashRes, empRes, repRes, returnsRes, expensesRes, packagingRes] = await Promise.all([
         adminApi.getDashboard(),
         adminApi.getEmployees(),
         adminApi.getReports(),
         managerApi.getProductReturns(),
         managerApi.getDailyExpenses(),
         packagingApi.list(),
-        mediaApi.list('video-shoot'),
-        mediaApi.list('video-out'),
       ]);
       if (dashRes.success && dashRes.data) setStats(dashRes.data);
       if (empRes.success && empRes.data) setEmployees(empRes.data.employees);
@@ -127,10 +119,6 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
         expenses: expensesRes.success ? expensesRes.data?.expenses || [] : [],
       });
       if (packagingRes.success) setPackagingReportData(packagingRes.data);
-      setMediaReportData({
-        shoots: shootsRes.success ? shootsRes.data : undefined,
-        out: outRes.success ? outRes.data : undefined,
-      });
     } catch (e) {
       console.error('Admin dashboard fetch error:', e);
     } finally {
@@ -385,12 +373,10 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.detailAttendanceRow}>
             <View style={styles.detailAttendanceItem}><Text style={styles.detailLabel}>Revenue</Text><Text style={[styles.detailValue, { color: colors.primary }]}>{formatCurrency(selectedEmployeeSales?.totalSales || 0)}</Text></View>
             <View style={styles.detailAttendanceItem}><Text style={styles.detailLabel}>Total Orders</Text><Text style={[styles.detailValue, { color: '#7C3AED' }]}>{selectedEmployeeSales?.totalOrders ?? 0}</Text></View>
-            <View style={styles.detailAttendanceItem}><Text style={styles.detailLabel}>Completed</Text><Text style={[styles.detailValue, { color: '#16A34A' }]}>{selectedEmployeeSales?.totalCompletedOrders || 0}</Text></View>
           </View>
           <View style={[styles.detailAttendanceRow, { marginTop: 8 }]}>
             <View style={styles.detailAttendanceItem}><Text style={styles.detailLabel}>COD Orders</Text><Text style={[styles.detailValue, { color: '#D97706' }]}>{selectedEmployeeSales?.totalCodOrders || 0}</Text></View>
             <View style={styles.detailAttendanceItem}><Text style={styles.detailLabel}>Prepaid</Text><Text style={[styles.detailValue, { color: '#2563EB' }]}>{selectedEmployeeSales?.totalPrepaidOrders || 0}</Text></View>
-            <View style={styles.detailAttendanceItem}><Text style={styles.detailLabel}>Cancelled</Text><Text style={[styles.detailValue, { color: '#DC2626' }]}>{selectedEmployeeSales?.totalCancelledOrders || 0}</Text></View>
           </View>
           <View style={styles.detailReportsRow}><Text style={styles.detailLabel}>WhatsApp Enquiries</Text><Text style={styles.detailValue}>{selectedEmployeeSales?.totalWhatsappEnquiries || 0}</Text></View>
           <View style={[styles.detailReportsRow, { marginTop: 4 }]}><Text style={styles.detailLabel}>Reports submitted</Text><Text style={styles.detailValue}>{selectedEmployeeSales?.reportCount || 0}</Text></View>
@@ -430,18 +416,7 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
       );
     }
 
-    const shoots = (mediaReportData.shoots?.activities || []).filter((record) => record.userId === employeeId);
-    const outs = (mediaReportData.out?.activities || []).filter((record) => record.userId === employeeId);
-    return (
-      <>
-        <Text style={styles.detailSectionLabel}>MEDIA PERFORMANCE</Text>
-        <View style={styles.detailAttendanceRow}>
-          <View style={styles.detailAttendanceItem}><Text style={styles.detailLabel}>Video Shoot</Text><Text style={[styles.detailValue, { color: colors.primary }]}>{shoots.reduce((sum, record) => sum + record.totalVideos, 0)}</Text></View>
-          <View style={styles.detailAttendanceItem}><Text style={styles.detailLabel}>Video Out</Text><Text style={[styles.detailValue, { color: '#16A34A' }]}>{outs.reduce((sum, record) => sum + record.totalVideos, 0)}</Text></View>
-          <View style={styles.detailAttendanceItem}><Text style={styles.detailLabel}>Records</Text><Text style={styles.detailValue}>{shoots.length + outs.length}</Text></View>
-        </View>
-      </>
-    );
+    return null;
   };
 
   // ── Loading ──────────────────────────────────────────────────────────────────
@@ -575,27 +550,6 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
               </Text>
             </View>
 
-            {/* Completed */}
-            <View style={[styles.breakdownCard, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
-              <View style={styles.breakdownCardTop}>
-                <Ionicons name="checkmark-circle-outline" size={15} color="#16A34A" />
-                <Text style={[styles.breakdownCardLabel, { color: '#166534' }]}>Completed</Text>
-              </View>
-              <Text style={[styles.breakdownCardVal, { color: '#15803D' }]}>
-                {stats.totalMonthlyCompletedOrders ?? 0}
-              </Text>
-            </View>
-
-            {/* Cancelled */}
-            <View style={[styles.breakdownCard, { backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}>
-              <View style={styles.breakdownCardTop}>
-                <Ionicons name="close-circle-outline" size={15} color="#DC2626" />
-                <Text style={[styles.breakdownCardLabel, { color: '#991B1B' }]}>Cancelled</Text>
-              </View>
-              <Text style={[styles.breakdownCardVal, { color: '#B91C1C' }]}>
-                {stats.totalMonthlyCancelledOrders ?? 0}
-              </Text>
-            </View>
           </View>
 
           {/* WhatsApp Enquiries Footer Bar */}
@@ -784,6 +738,64 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
           </View>
         )}
 
+        {/* ── Late Check-ins Section (After 10:00 AM) ── */}
+        <View style={styles.sectionHeaderRow}>
+          <View style={styles.sectionTitleWithBadge}>
+            <Text style={styles.sectionLabel}>Late Check-ins Today</Text>
+            {stats.lateCheckIns && stats.lateCheckIns.length > 0 ? (
+              <View style={styles.earlyCountPill}>
+                <Text style={styles.earlyCountPillText}>{stats.lateCheckIns.length}</Text>
+              </View>
+            ) : null}
+          </View>
+          <View style={styles.cutoffPill}>
+            <Ionicons name="time-outline" size={12} color="#92400E" />
+            <Text style={styles.cutoffPillText}>Start: 10:00 AM</Text>
+          </View>
+        </View>
+
+        {(!stats.lateCheckIns || stats.lateCheckIns.length === 0) ? (
+          <View style={styles.emptyEarlyBox}>
+            <View style={styles.emptyEarlyIconWrap}>
+              <Ionicons name="checkmark-done-circle" size={24} color={colors.success} />
+            </View>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={styles.emptyEarlyTitle}>No Late Check-ins Today</Text>
+              <Text style={styles.emptyEarlySub}>All checked-in employees arrived by 10:00 AM.</Text>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.earlyListWrap}>
+            {stats.lateCheckIns.map((item) => (
+              <View key={item.id} style={styles.earlyCheckoutCard}>
+                <View style={styles.earlyCheckoutTop}>
+                  <Image
+                    source={{
+                      uri: item.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(item.fullName)}&background=F1E6F8&color=570490&size=200`,
+                    }}
+                    style={styles.earlyAvatar}
+                  />
+                  <View style={{ flex: 1, marginLeft: 10 }}>
+                    <Text style={styles.earlyEmpName}>{item.fullName}</Text>
+                    <Text style={styles.earlyEmpMeta}>{item.department} · ID: {item.employeeId}</Text>
+                  </View>
+                  <View style={styles.earlyTimeBadge}>
+                    <Ionicons name="log-in-outline" size={13} color="#B45309" />
+                    <Text style={styles.earlyTimeBadgeText}>In at {item.checkInTime}</Text>
+                  </View>
+                </View>
+                <View style={styles.earlyReasonBox}>
+                  <Ionicons name="alert-circle-outline" size={20} color="#D97706" style={{ marginTop: 2 }} />
+                  <View style={{ flex: 1, marginLeft: 8 }}>
+                    <Text style={styles.earlyReasonLabel}>Reason for Late Check-in:</Text>
+                    <Text style={styles.earlyReasonText}>{item.reason}</Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
       </>
     );
   };
@@ -879,6 +891,14 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
                 </Text>
               </View>
             )}
+            {emp.lateCheckInReason && (
+              <View style={styles.empLateNoticeBox}>
+                <Ionicons name="alert-circle-outline" size={13} color="#B45309" />
+                <Text style={styles.empLateNoticeText} numberOfLines={2}>
+                  Late check-in reason: {emp.lateCheckInReason}
+                </Text>
+              </View>
+            )}
 
             {/* Selfie */}
             {emp.selfieUrl && (
@@ -943,7 +963,6 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
         ['sales', 'Sales', 'trending-up-outline'],
         ['manager', 'Manager', 'briefcase-outline'],
         ['packaging', 'Packaging', 'cube-outline'],
-        ['media', 'Media', 'videocam-outline'],
       ] as const).map(([id, label, icon]) => (
         <TouchableOpacity
           key={id}
@@ -969,8 +988,6 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
       const returns = managerReportData.returns.filter((record) => record.userId === employee.id);
       const expenses = managerReportData.expenses.filter((record) => record.userId === employee.id);
       const packingRecords = (packagingReportData?.records || []).filter((record) => record.userId === employee.id);
-      const shootRecords = (mediaReportData.shoots?.activities || []).filter((record) => record.userId === employee.id);
-      const outRecords = (mediaReportData.out?.activities || []).filter((record) => record.userId === employee.id);
 
       const metrics = reportDepartment === 'manager'
         ? [
@@ -985,9 +1002,9 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
             { label: 'KLIndia', value: packingRecords.filter((record) => record.orderSource === 'klindia').reduce((sum, record) => sum + record.ordersPacked, 0), color: '#2563EB' },
           ]
         : [
-            { label: 'Shoot', value: shootRecords.reduce((sum, record) => sum + record.totalVideos, 0), color: colors.primary },
-            { label: 'Video Out', value: outRecords.reduce((sum, record) => sum + record.totalVideos, 0), color: '#16A34A' },
-            { label: 'Records', value: shootRecords.length + outRecords.length, color: colors.primary },
+            { label: 'Packed', value: packingRecords.reduce((sum, record) => sum + record.ordersPacked, 0), color: colors.primary },
+            { label: 'KLTrends', value: packingRecords.filter((record) => record.orderSource === 'kltrends').reduce((sum, record) => sum + record.ordersPacked, 0), color: '#D97706' },
+            { label: 'KLIndia', value: packingRecords.filter((record) => record.orderSource === 'klindia').reduce((sum, record) => sum + record.ordersPacked, 0), color: '#2563EB' },
           ];
 
       const primaryValue = Number(metrics[0].value) || 0;
@@ -1047,9 +1064,6 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
     const totalOrders = reportsSummary
       ? reportsSummary.totalOrders ?? ((reportsSummary.totalCodOrders || 0) + (reportsSummary.totalPrepaidOrders || 0))
       : 0;
-    const completedOrders = reportsSummary?.totalCompletedOrders ?? 0;
-    const cancelledOrders = reportsSummary?.totalCancelledOrders ?? 0;
-    const fulfillmentRate = totalOrders > 0 ? Math.round((completedOrders / totalOrders) * 100) : 100;
 
     return (
       <>
@@ -1087,36 +1101,26 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
               <Text style={styles.minimalRevenueVal}>{formatCurrency(reportsSummary.totalSales)}</Text>
             </View>
 
-            {/* 3 Main Key Metrics */}
+            {/* Order Metrics */}
             <View style={styles.minimalMetricsRow}>
-              <View style={styles.minimalMetricCol}>
+              <View style={[styles.minimalMetricCol, styles.totalOrdersMetric]}>
+                <Ionicons name="cart-outline" size={18} color="#7C3AED" />
                 <Text style={styles.minimalMetricNum}>{totalOrders}</Text>
                 <Text style={styles.minimalMetricName}>Total Orders</Text>
-                <Text style={styles.minimalMetricSub}>
-                  {reportsSummary.totalCodOrders ?? 0} COD · {reportsSummary.totalPrepaidOrders ?? 0} Pre
-                </Text>
               </View>
-
-              <View style={styles.minimalColDivider} />
-
-              <View style={styles.minimalMetricCol}>
-                <Text style={[styles.minimalMetricNum, { color: '#16A34A' }]}>{completedOrders}</Text>
-                <Text style={styles.minimalMetricName}>Completed</Text>
-                <Text style={[styles.minimalMetricSub, { color: '#15803D' }]}>
-                  {fulfillmentRate}% rate
+              <View style={[styles.minimalMetricCol, styles.codMetric]}>
+                <Ionicons name="cube-outline" size={18} color="#D97706" />
+                <Text style={[styles.minimalMetricNum, { color: '#B45309' }]}>
+                  {reportsSummary.totalCodOrders ?? 0}
                 </Text>
+                <Text style={[styles.minimalMetricName, { color: '#92400E' }]}>COD Orders</Text>
               </View>
-
-              <View style={styles.minimalColDivider} />
-
-              <View style={styles.minimalMetricCol}>
-                <Text style={[styles.minimalMetricNum, { color: cancelledOrders > 0 ? '#DC2626' : colors.textMuted }]}>
-                  {cancelledOrders}
+              <View style={[styles.minimalMetricCol, styles.prepaidMetric]}>
+                <Ionicons name="card-outline" size={18} color="#2563EB" />
+                <Text style={[styles.minimalMetricNum, { color: '#1D4ED8' }]}>
+                  {reportsSummary.totalPrepaidOrders ?? 0}
                 </Text>
-                <Text style={styles.minimalMetricName}>Cancelled</Text>
-                <Text style={styles.minimalMetricSub}>
-                  {cancelledOrders > 0 ? 'Orders cancelled' : 'No cancels'}
-                </Text>
+                <Text style={[styles.minimalMetricName, { color: '#1E40AF' }]}>Prepaid</Text>
               </View>
             </View>
 
@@ -1195,22 +1199,6 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
                     Prepaid: <Text style={{ fontWeight: '800', color: '#2563EB' }}>{emp.totalPrepaidOrders ?? 0}</Text>
                   </Text>
                 </View>
-                <Text style={styles.minimalEmpStatDot}>·</Text>
-                <View style={styles.minimalEmpStatItem}>
-                  <Text style={styles.minimalEmpStatText}>
-                    Done: <Text style={{ fontWeight: '800', color: '#16A34A' }}>{emp.totalCompletedOrders ?? 0}</Text>
-                  </Text>
-                </View>
-                {emp.totalCancelledOrders ? (
-                  <>
-                    <Text style={styles.minimalEmpStatDot}>·</Text>
-                    <View style={styles.minimalEmpStatItem}>
-                      <Text style={styles.minimalEmpStatText}>
-                        Cancel: <Text style={{ fontWeight: '800', color: '#DC2626' }}>{emp.totalCancelledOrders}</Text>
-                      </Text>
-                    </View>
-                  </>
-                ) : null}
               </View>
 
               {/* Minimal Slim Progress Bar */}
@@ -1241,7 +1229,6 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
       <View style={styles.topBar}>
         <View>
           <Text style={styles.topDate}>{getTodayDate()}</Text>
-          <Text style={styles.topBrand}>Admin Console</Text>
         </View>
         <View style={styles.topRight}>
           <TouchableOpacity onPress={() => navigation.navigate('AdminProfile')} activeOpacity={0.8}>
@@ -1263,10 +1250,6 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
         {/* Greeting */}
         <View style={styles.greeting}>
           <Text style={styles.greetingHi}>Hello, {(user?.fullName || user?.username || 'Admin').split(' ')[0]}</Text>
-          <View style={styles.adminBadge}>
-            <Ionicons name="shield-checkmark" size={10} color={colors.primary} style={{ marginRight: 3 }} />
-            <Text style={styles.adminBadgeText}>Administrator</Text>
-          </View>
         </View>
 
         {renderSectionTabs()}
@@ -1337,6 +1320,17 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
                       <Text style={styles.detailEarlyLeaveLabel}>Early Leave Reason</Text>
                       <Text style={styles.detailEarlyLeaveValue} selectable>
                         {selectedEmployeeDetails.earlyCheckoutReason}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+                {selectedEmployeeDetails.lateCheckInReason && (
+                  <View style={styles.detailLateNoticeBox}>
+                    <Ionicons name="alert-circle-outline" size={17} color="#B45309" />
+                    <View style={{ flex: 1, marginLeft: 8 }}>
+                      <Text style={styles.detailLateNoticeLabel}>Late Check-In Reason</Text>
+                      <Text style={styles.detailLateNoticeValue} selectable>
+                        {selectedEmployeeDetails.lateCheckInReason}
                       </Text>
                     </View>
                   </View>
@@ -2047,31 +2041,46 @@ const styles = StyleSheet.create({
   },
   minimalMetricsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    alignItems: 'stretch',
+    gap: 8,
   },
   minimalMetricCol: {
     flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 86,
+    paddingHorizontal: 4,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  totalOrdersMetric: {
+    backgroundColor: '#F5F3FF',
+    borderColor: '#DDD6FE',
+  },
+  codMetric: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FDE68A',
+  },
+  prepaidMetric: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
   },
   minimalMetricNum: {
-    fontSize: 18,
+    fontSize: 23,
     fontWeight: '900',
     color: colors.textPrimary,
     fontVariant: ['tabular-nums'],
+    lineHeight: 28,
+    marginTop: 3,
   },
   minimalMetricName: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
     color: colors.textSecondary,
     marginTop: 2,
-  },
-  minimalMetricSub: {
-    fontSize: 9,
-    color: colors.textMuted,
-    fontWeight: '600',
-    marginTop: 2,
     textAlign: 'center',
+    lineHeight: 13,
   },
   minimalColDivider: {
     width: 1,
@@ -2216,6 +2225,9 @@ const styles = StyleSheet.create({
   detailEarlyLeaveBox: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: '#FFFBEB', borderRadius: 10, borderWidth: 1, borderColor: '#FDE68A', padding: 10, marginTop: 10 },
   detailEarlyLeaveLabel: { fontSize: 11, fontWeight: '700', color: '#92400E' },
   detailEarlyLeaveValue: { fontSize: 13, fontWeight: '700', color: '#78350F', marginTop: 3, lineHeight: 18 },
+  detailLateNoticeBox: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: '#FFF7ED', borderRadius: 10, borderWidth: 1, borderColor: '#FED7AA', padding: 10, marginTop: 10 },
+  detailLateNoticeLabel: { fontSize: 11, fontWeight: '700', color: '#9A3412' },
+  detailLateNoticeValue: { fontSize: 13, fontWeight: '700', color: '#7C2D12', marginTop: 3, lineHeight: 18 },
   detailReportsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.surface, borderRadius: 10, padding: 10, marginTop: 8 },
   detailsSelfieBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, marginTop: 16, backgroundColor: colors.primarySoft, borderRadius: 10 },
 
@@ -2475,5 +2487,23 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#92400E',
+  },
+  empLateNoticeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF7ED',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    gap: 5,
+  },
+  empLateNoticeText: {
+    flex: 1,
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#9A3412',
   },
 });

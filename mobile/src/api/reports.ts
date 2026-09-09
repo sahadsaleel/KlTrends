@@ -7,8 +7,6 @@ export interface Report {
   totalSalesAmount: number;
   whatsappEnquiries: number;
   totalOrders: number;
-  completedOrders: number;
-  cancelledOrders: number;
   codOrders: number;
   prepaidOrders: number;
   createdAt: string;
@@ -18,8 +16,6 @@ export interface Report {
 export interface ReportSummary {
   totalSales: number;
   totalOrders: number;
-  completedOrders: number;
-  cancelledOrders: number;
   codOrders: number;
   prepaidOrders: number;
   whatsappEnquiries: number;
@@ -47,8 +43,6 @@ export interface ReportPayload {
   whatsappEnquiries: number;
   codOrders: number;
   prepaidOrders: number;
-  completedOrders: number;
-  cancelledOrders: number;
   totalOrders?: number;
 }
 

@@ -8,8 +8,6 @@ export interface IReport {
   totalSalesAmount: number;
   whatsappEnquiries: number;
   totalOrders: number;
-  completedOrders: number;
-  cancelledOrders: number;
   codOrders: number;
   prepaidOrders: number;
   createdAt: Date;
@@ -23,8 +21,6 @@ export class ReportModel implements IReport {
   totalSalesAmount: number;
   whatsappEnquiries: number;
   totalOrders: number;
-  completedOrders: number;
-  cancelledOrders: number;
   codOrders: number;
   prepaidOrders: number;
   createdAt: Date;
@@ -41,8 +37,6 @@ export class ReportModel implements IReport {
     this.totalOrders = data.totalOrders !== undefined && data.totalOrders !== null
       ? Number(data.totalOrders)
       : this.codOrders + this.prepaidOrders;
-    this.completedOrders = Number(data.completedOrders) || 0;
-    this.cancelledOrders = Number(data.cancelledOrders) || 0;
     this.createdAt = data.createdAt ? new Date(data.createdAt) : new Date();
     this.updatedAt = data.updatedAt ? new Date(data.updatedAt) : new Date();
   }
@@ -75,8 +69,8 @@ export const Report = {
   async create(data: Omit<IReport, 'id' | 'createdAt' | 'updatedAt'>): Promise<IReport> {
     const report = new ReportModel({ ...data, id: uuidv4() });
     await query(
-      `INSERT INTO reports (id, userId, date, totalSalesAmount, whatsappEnquiries, totalOrders, completedOrders, cancelledOrders, codOrders, prepaidOrders, createdAt, updatedAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      `INSERT INTO reports (id, userId, date, totalSalesAmount, whatsappEnquiries, totalOrders, codOrders, prepaidOrders, createdAt, updatedAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
       [
         report.id,
         report.userId,
@@ -84,8 +78,6 @@ export const Report = {
         report.totalSalesAmount,
         report.whatsappEnquiries,
         report.totalOrders,
-        report.completedOrders,
-        report.cancelledOrders,
         report.codOrders,
         report.prepaidOrders,
       ]
@@ -96,20 +88,18 @@ export const Report = {
   async updateForUser(
     id: string,
     userId: string,
-    values: Partial<Pick<IReport, 'date' | 'totalSalesAmount' | 'whatsappEnquiries' | 'totalOrders' | 'completedOrders' | 'cancelledOrders' | 'codOrders' | 'prepaidOrders'>>
+    values: Partial<Pick<IReport, 'date' | 'totalSalesAmount' | 'whatsappEnquiries' | 'totalOrders' | 'codOrders' | 'prepaidOrders'>>
   ): Promise<IReport | null> {
     const existing = await Report.findByIdForUser(id, userId);
     if (!existing) return null;
     const updated = new ReportModel({ ...existing, ...values });
     await query(
-      `UPDATE reports SET date = ?, totalSalesAmount = ?, whatsappEnquiries = ?, totalOrders = ?, completedOrders = ?, cancelledOrders = ?, codOrders = ?, prepaidOrders = ?, updatedAt = NOW() WHERE id = ? AND userId = ?`,
+      `UPDATE reports SET date = ?, totalSalesAmount = ?, whatsappEnquiries = ?, totalOrders = ?, codOrders = ?, prepaidOrders = ?, updatedAt = NOW() WHERE id = ? AND userId = ?`,
       [
         updated.date,
         updated.totalSalesAmount,
         updated.whatsappEnquiries,
         updated.totalOrders,
-        updated.completedOrders,
-        updated.cancelledOrders,
         updated.codOrders,
         updated.prepaidOrders,
         id,

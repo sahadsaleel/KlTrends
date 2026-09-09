@@ -15,8 +15,7 @@ export type TabName =
   | 'AddReport'
   | 'ProductReturns'
   | 'DailyExpenses'
-  | 'PackagingDuties'
-  | 'MediaDuties'
+  | 'DailyPacking'
   | 'Attendance'
   | 'Profile'
   | 'Reports';
@@ -60,14 +59,7 @@ const managerTabs: NavItemConfig[] = [
 
 const packagingTabs: NavItemConfig[] = [
   { name: 'Home', icon: 'home-outline', iconActive: 'home', label: 'Home' },
-  { name: 'PackagingDuties', icon: 'cube-outline', iconActive: 'cube', label: 'Packaging' },
-  { name: 'Attendance', icon: 'finger-print-outline', iconActive: 'finger-print', label: 'Attendance' },
-  { name: 'Profile', icon: 'person-outline', iconActive: 'person', label: 'Profile' },
-];
-
-const mediaTabs: NavItemConfig[] = [
-  { name: 'Home', icon: 'home-outline', iconActive: 'home', label: 'Home' },
-  { name: 'MediaDuties', icon: 'videocam-outline', iconActive: 'videocam', label: 'Media' },
+  { name: 'DailyPacking', icon: 'cube-outline', iconActive: 'cube', label: 'Packaging' },
   { name: 'Attendance', icon: 'finger-print-outline', iconActive: 'finger-print', label: 'Attendance' },
   { name: 'Profile', icon: 'person-outline', iconActive: 'person', label: 'Profile' },
 ];
@@ -92,8 +84,6 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
     tabs = managerTabs;
   } else if (currentDept === 'packaging') {
     tabs = packagingTabs;
-  } else if (currentDept === 'media') {
-    tabs = mediaTabs;
   } else {
     tabs = salesTabs;
   }
@@ -125,11 +115,8 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
       case 'DailyExpenses':
         navigation.navigate('DailyExpenses');
         break;
-      case 'PackagingDuties':
-        navigation.navigate('PackagingDuties');
-        break;
-      case 'MediaDuties':
-        navigation.navigate('MediaDuties');
+      case 'DailyPacking':
+        navigation.navigate('DailyPacking');
         break;
       case 'Attendance':
         navigation.navigate('Attendance');

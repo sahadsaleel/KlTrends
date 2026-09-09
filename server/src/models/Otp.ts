@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import bcrypt from 'bcryptjs';
 import { query } from '../config/db.js';
 
 export type OtpPurpose = 'login' | 'register' | 'forgot-password' | 'reset-password' | string;
@@ -13,6 +14,7 @@ export interface IOtp {
   registrationData?: any;
   createdAt: Date;
   expiresAt: Date;
+  attempts: number;
 }
 
 export class OtpModel implements IOtp {
@@ -24,6 +26,7 @@ export class OtpModel implements IOtp {
   registrationData?: any;
   createdAt: Date;
   expiresAt: Date;
+  attempts: number;
 
   constructor(data: any) {
     this.id = data.id || uuidv4();
@@ -46,15 +49,21 @@ export class OtpModel implements IOtp {
     this.expiresAt = data.expiresAt
       ? new Date(data.expiresAt)
       : new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+    this.attempts = Number(data.attempts || 0);
   }
 }
 
 export const Otp = {
   async findOne(filter: Record<string, any>): Promise<IOtp | null> {
-    const conditions: string[] = ['expiresAt > NOW()'];
+    const conditions: string[] = ['expiresAt > NOW()', 'attempts < 5'];
     const params: any[] = [];
+    let submittedOtp: string | undefined;
 
     for (const [key, value] of Object.entries(filter)) {
+      if (key === 'otp') {
+        submittedOtp = String(value);
+        continue;
+      }
       if (key === 'email') {
         conditions.push('LOWER(email) = LOWER(?)');
         params.push(value);
@@ -65,22 +74,27 @@ export const Otp = {
     }
 
     const whereClause = `WHERE ${conditions.join(' AND ')}`;
-    const rows = await query<any[]>(`SELECT * FROM otps ${whereClause} ORDER BY createdAt DESC LIMIT 1`, params);
-    if (!rows || rows.length === 0) return null;
-    return new OtpModel(rows[0]);
+    const rows = await query<any[]>(`SELECT * FROM otps ${whereClause} ORDER BY createdAt DESC LIMIT 5`, params);
+    if (!rows || rows.length === 0 || !submittedOtp) return null;
+    for (const row of rows) {
+      if (await bcrypt.compare(submittedOtp, row.otp)) return new OtpModel(row);
+      await query('UPDATE otps SET attempts = attempts + 1 WHERE id = ?', [row.id]);
+    }
+    return null;
   },
 
   async create(data: any): Promise<IOtp> {
     const model = new OtpModel(data);
+    const otpHash = await bcrypt.hash(model.otp, 12);
     const regDataJson = model.registrationData ? JSON.stringify(model.registrationData) : null;
 
     await query(
-      `INSERT INTO otps (id, email, otp, purpose, role, registrationData, createdAt, expiresAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO otps (id, email, otp, purpose, role, registrationData, createdAt, expiresAt, attempts)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`,
       [
         model.id,
         model.email,
-        model.otp,
+        otpHash,
         model.purpose,
         model.role,
         regDataJson,

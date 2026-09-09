@@ -40,7 +40,6 @@ export const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
   const [age, setAge] = useState<string>(user?.age ? String(user.age) : '');
   const [email, setEmail] = useState<string>(user?.email || '');
   const [phone, setPhone] = useState<string>(user?.phone || '');
-  const [employeeId, setEmployeeId] = useState<string>(user?.employeeId || '');
   const [joiningDate, setJoiningDate] = useState<string>(user?.joiningDate || '');
   const [department, setDepartment] = useState<string>(user?.department || '');
   const [avatarUrl, setAvatarUrl] = useState<string>(user?.avatarUrl || '');
@@ -54,7 +53,6 @@ export const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
       if (user.age) setAge(String(user.age));
       if (user.email) setEmail(user.email);
       if (user.phone) setPhone(user.phone);
-      if (user.employeeId) setEmployeeId(user.employeeId);
       if (user.joiningDate) setJoiningDate(user.joiningDate);
       if (user.department) setDepartment(user.department);
       if (user.avatarUrl) setAvatarUrl(user.avatarUrl);
@@ -110,11 +108,6 @@ export const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
       Alert.alert('Validation Error', 'Please enter a valid email address.');
       return;
     }
-    if (!employeeId.trim()) {
-      Alert.alert('Validation Error', 'Employee ID is required.');
-      return;
-    }
-
     setSaving(true);
 
     const payload = {
@@ -122,7 +115,6 @@ export const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
       age: age ? parseInt(age, 10) : undefined,
       email: email.trim(),
       phone: phone.trim(),
-      employeeId: employeeId.trim(),
       joiningDate: joiningDate.trim(),
       avatarUrl: avatarUrl.trim(),
     };
@@ -173,11 +165,8 @@ export const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
         case 'DailyExpenses':
           navigation.navigate('DailyExpenses' as any);
           break;
-        case 'PackagingDuties':
-          navigation.navigate('PackagingDuties' as any);
-          break;
-        case 'MediaDuties':
-          navigation.navigate('MediaDuties' as any);
+        case 'DailyPacking':
+          navigation.navigate('DailyPacking' as any);
           break;
         case 'Profile':
           break;
@@ -308,21 +297,6 @@ export const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
           {/* Section 3: Employment Details Card */}
           <View style={styles.card}>
             <Text style={styles.sectionHeaderTitle}>Employment Details</Text>
-
-            {/* Employee ID */}
-            <Text style={styles.fieldLabel}>
-              Employee ID <Text style={styles.requiredAsterisk}>*</Text>
-            </Text>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                value={employeeId}
-                onChangeText={setEmployeeId}
-                placeholder="e.g. EMP-1001"
-                placeholderTextColor="#9CA3AF"
-              />
-            </View>
-            <Text style={styles.inputHelpText}>Employee Identifier.</Text>
 
             {/* Joining Date */}
             <Text style={styles.fieldLabel}>

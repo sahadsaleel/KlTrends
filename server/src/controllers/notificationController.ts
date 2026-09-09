@@ -22,6 +22,22 @@ const formatTimeAgo = (date: Date): string => {
   return new Date(date).toLocaleDateString([], { month: 'short', day: 'numeric' });
 };
 
+const isNotificationForUser = (
+  notification: { targetType: string; targetId?: string },
+  userId: string,
+  department?: string,
+  employeeId?: string
+): boolean => {
+  if (notification.targetType === 'all') return true;
+  if (notification.targetType === 'department') {
+    return Boolean(department && notification.targetId?.toLowerCase() === department.toLowerCase());
+  }
+  if (notification.targetType === 'employee') {
+    return notification.targetId === userId || Boolean(employeeId && notification.targetId === employeeId);
+  }
+  return false;
+};
+
 // ─── ADMIN CONTROLLERS ────────────────────────────────────────────────────────
 
 /**
@@ -336,6 +352,12 @@ export const markAsRead = async (
     const notification = await Notification.findById(id);
     if (!notification) {
       res.status(404).json({ success: false, error: 'Notification not found.' });
+      return;
+    }
+
+    const user = await User.findById(userId);
+    if (!isNotificationForUser(notification, userId, user?.department, user?.employeeId)) {
+      res.status(403).json({ success: false, error: 'You do not have access to this notification.' });
       return;
     }
 

@@ -53,14 +53,6 @@ export const getDashboardStats = async (req: AuthenticatedRequest, res: Response
       (sum, r) => sum + r.totalOrders,
       0
     );
-    const totalMonthlyCompletedOrders = monthlyReports.reduce(
-      (sum, r) => sum + r.completedOrders,
-      0
-    );
-    const totalMonthlyCancelledOrders = monthlyReports.reduce(
-      (sum, r) => sum + r.cancelledOrders,
-      0
-    );
     const totalMonthlyCodOrders = monthlyReports.reduce(
       (sum, r) => sum + r.codOrders,
       0
@@ -133,6 +125,30 @@ export const getDashboardStats = async (req: AuthenticatedRequest, res: Response
       })
       .sort((a, b) => new Date(b.checkOutTime).getTime() - new Date(a.checkOutTime).getTime());
 
+    const lateAttendances = todayAttendance.filter(
+      (attendance) => attendance.status === 'LATE' || Boolean(attendance.lateCheckInReason)
+    );
+    const lateUserIds = [...new Set(lateAttendances.map((attendance) => attendance.userId.toString()))];
+    const lateUsers = lateUserIds.length > 0 ? await User.findByIds(lateUserIds) : [];
+    const lateUserMap = new Map(lateUsers.map((u) => [u.id.toString(), u]));
+    const lateCheckIns = lateAttendances
+      .map((attendance) => {
+        const user = lateUserMap.get(attendance.userId.toString());
+        return {
+          id: attendance.id,
+          userId: attendance.userId,
+          fullName: user?.fullName || user?.username || 'Unknown Employee',
+          employeeId: user?.employeeId || '--',
+          department: user?.department || 'General',
+          avatarUrl: user?.avatarUrl,
+          checkInTime: attendance.checkInTime
+            ? new Date(attendance.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : '--',
+          reason: attendance.lateCheckInReason || 'Late check-in (No specific reason provided)',
+        };
+      })
+      .sort((a, b) => a.checkInTime.localeCompare(b.checkInTime));
+
     const monthNames = [
       'January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December',
@@ -148,14 +164,13 @@ export const getDashboardStats = async (req: AuthenticatedRequest, res: Response
         totalMonthlySales,
         totalMonthlyWhatsappEnquiries,
         totalMonthlyTotalOrders,
-        totalMonthlyCompletedOrders,
-        totalMonthlyCancelledOrders,
         totalMonthlyCodOrders,
         totalMonthlyPrepaidOrders,
         currentMonth: monthNames[month],
         currentYear: year,
         topPerformers,
         earlyCheckouts,
+        lateCheckIns,
       },
     });
   } catch (error: any) {
@@ -202,6 +217,7 @@ export const getAllEmployees = async (req: AuthenticatedRequest, res: Response):
         selfieUrl: attendance?.selfieUrl || null,
         isVerified: attendance?.isVerified || false,
         earlyCheckoutReason: attendance?.earlyCheckoutReason || null,
+        lateCheckInReason: attendance?.lateCheckInReason || null,
         checkInTime: attendance?.checkInTime
           ? new Date(attendance.checkInTime).toLocaleTimeString([], {
             hour: '2-digit',
@@ -257,8 +273,6 @@ export const getAllEmployeeReports = async (req: AuthenticatedRequest, res: Resp
     const totalSales = reports.reduce((sum, r) => sum + r.totalSalesAmount, 0);
     const totalWhatsappEnquiries = reports.reduce((sum, r) => sum + r.whatsappEnquiries, 0);
     const totalOrders = reports.reduce((sum, r) => sum + r.totalOrders, 0);
-    const totalCompletedOrders = reports.reduce((sum, r) => sum + r.completedOrders, 0);
-    const totalCancelledOrders = reports.reduce((sum, r) => sum + r.cancelledOrders, 0);
     const totalCodOrders = reports.reduce((sum, r) => sum + r.codOrders, 0);
     const totalPrepaidOrders = reports.reduce((sum, r) => sum + r.prepaidOrders, 0);
 
@@ -272,8 +286,6 @@ export const getAllEmployeeReports = async (req: AuthenticatedRequest, res: Resp
       totalSales: number;
       totalWhatsappEnquiries: number;
       totalOrders: number;
-      totalCompletedOrders: number;
-      totalCancelledOrders: number;
       totalCodOrders: number;
       totalPrepaidOrders: number;
       reportCount: number;
@@ -283,8 +295,6 @@ export const getAllEmployeeReports = async (req: AuthenticatedRequest, res: Resp
       totalSales: number;
       totalWhatsappEnquiries: number;
       totalOrders: number;
-      totalCompletedOrders: number;
-      totalCancelledOrders: number;
       totalCodOrders: number;
       totalPrepaidOrders: number;
       reportCount: number;
@@ -295,8 +305,6 @@ export const getAllEmployeeReports = async (req: AuthenticatedRequest, res: Resp
         totalSales: 0,
         totalWhatsappEnquiries: 0,
         totalOrders: 0,
-        totalCompletedOrders: 0,
-        totalCancelledOrders: 0,
         totalCodOrders: 0,
         totalPrepaidOrders: 0,
         reportCount: 0,
@@ -304,8 +312,6 @@ export const getAllEmployeeReports = async (req: AuthenticatedRequest, res: Resp
       existing.totalSales += r.totalSalesAmount;
       existing.totalWhatsappEnquiries += r.whatsappEnquiries;
       existing.totalOrders += r.totalOrders;
-      existing.totalCompletedOrders += r.completedOrders;
-      existing.totalCancelledOrders += r.cancelledOrders;
       existing.totalCodOrders += r.codOrders;
       existing.totalPrepaidOrders += r.prepaidOrders;
       existing.reportCount += 1;
@@ -323,8 +329,6 @@ export const getAllEmployeeReports = async (req: AuthenticatedRequest, res: Resp
         totalSales: val.totalSales,
         totalWhatsappEnquiries: val.totalWhatsappEnquiries,
         totalOrders: val.totalOrders,
-        totalCompletedOrders: val.totalCompletedOrders,
-        totalCancelledOrders: val.totalCancelledOrders,
         totalCodOrders: val.totalCodOrders,
         totalPrepaidOrders: val.totalPrepaidOrders,
         reportCount: val.reportCount,
@@ -348,8 +352,6 @@ export const getAllEmployeeReports = async (req: AuthenticatedRequest, res: Resp
           totalSales,
           totalWhatsappEnquiries,
           totalOrders,
-          totalCompletedOrders,
-          totalCancelledOrders,
           totalCodOrders,
           totalPrepaidOrders,
           totalReports: reports.length,
@@ -378,6 +380,10 @@ export const createEmployee = async (req: AuthenticatedRequest, res: Response): 
         success: false,
         error: 'Please provide full name, employee ID, and email.',
       });
+      return;
+    }
+    if (typeof password !== 'string' || password.length < 10) {
+      res.status(400).json({ success: false, error: 'A password of at least 10 characters is required.' });
       return;
     }
 
@@ -432,7 +438,7 @@ export const createEmployee = async (req: AuthenticatedRequest, res: Response): 
       username: fullName.trim(),
       employeeId: cleanEmpId,
       email: cleanEmail,
-      password: password && password.length >= 6 ? password : 'Password123!',
+      password,
       role: 'employee',
       department: normDept,
       phone: phone?.trim() || '',

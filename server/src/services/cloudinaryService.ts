@@ -5,6 +5,18 @@ export interface CloudinaryUploadResult {
   publicId: string;
 }
 
+const normalizeImagePayload = (value: string): string => {
+  const payload = value.trim();
+  if (payload.length > 2_000_000) throw new Error('Image payload is too large.');
+  if (!payload.startsWith('data:image/')) {
+    throw new Error('Only image data uploads are supported.');
+  }
+  if (!/^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/i.test(payload)) {
+    throw new Error('Unsupported or invalid image format.');
+  }
+  return payload;
+};
+
 /**
  * Uploads employee attendance selfie to Cloudinary folder
  * @param imageBase64OrUri Base64 data string, data URI, or URL
@@ -21,15 +33,7 @@ export const uploadAttendanceSelfie = async (
 
     const folder = process.env.CLOUDINARY_FOLDER || 'kltrends/attendance_selfies';
 
-    // Format data URI if raw base64 string provided
-    let uploadPayload = imageBase64OrUri.trim();
-    if (
-      !uploadPayload.startsWith('data:') &&
-      !uploadPayload.startsWith('http://') &&
-      !uploadPayload.startsWith('https://')
-    ) {
-      uploadPayload = `data:image/jpeg;base64,${uploadPayload}`;
-    }
+    const uploadPayload = normalizeImagePayload(imageBase64OrUri);
 
     const result = await cloudinary.uploader.upload(uploadPayload, {
       folder,
@@ -65,14 +69,7 @@ export const uploadProfileImage = async (
 
     const folder = 'kltrends/profile_images';
 
-    let uploadPayload = imageBase64OrUri.trim();
-    if (
-      !uploadPayload.startsWith('data:') &&
-      !uploadPayload.startsWith('http://') &&
-      !uploadPayload.startsWith('https://')
-    ) {
-      uploadPayload = `data:image/jpeg;base64,${uploadPayload}`;
-    }
+    const uploadPayload = normalizeImagePayload(imageBase64OrUri);
 
     const result = await cloudinary.uploader.upload(uploadPayload, {
       folder,

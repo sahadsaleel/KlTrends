@@ -4,11 +4,15 @@ let pool: mysql.Pool | null = null;
 
 export const getPool = (): mysql.Pool => {
   if (!pool) {
-    const host = process.env.DB_HOST || 'localhost';
+    const isProduction = process.env.NODE_ENV === 'production';
+    const host = process.env.DB_HOST || (isProduction ? '' : 'localhost');
     const port = parseInt(process.env.DB_PORT || '3306', 10);
-    const user = process.env.DB_USER || 'root';
+    const user = process.env.DB_USER || (isProduction ? '' : 'root');
     const password = process.env.DB_PASSWORD || '';
-    const database = process.env.DB_NAME || 'kltrends';
+    const database = process.env.DB_NAME || (isProduction ? '' : 'kltrends');
+    if (!host || !user || !password || !database) {
+      throw new Error('DB_HOST, DB_USER, DB_PASSWORD, and DB_NAME are required in production.');
+    }
 
     pool = mysql.createPool({
       host,
@@ -82,6 +86,7 @@ const initTables = async (connection: mysql.Connection | mysql.Pool): Promise<vo
       isVerified BOOLEAN DEFAULT FALSE,
       location VARCHAR(255) NULL,
       notes TEXT NULL,
+      lateCheckInReason TEXT NULL,
       earlyCheckoutReason TEXT NULL,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -97,6 +102,9 @@ const initTables = async (connection: mysql.Connection | mysql.Pool): Promise<vo
   const existingAttCols = new Set(attCols.map((c: any) => c.Field));
   if (!existingAttCols.has('earlyCheckoutReason')) {
     await connection.query('ALTER TABLE attendances ADD COLUMN earlyCheckoutReason TEXT NULL');
+  }
+  if (!existingAttCols.has('lateCheckInReason')) {
+    await connection.query('ALTER TABLE attendances ADD COLUMN lateCheckInReason TEXT NULL');
   }
 
   // 3. Reports table
@@ -195,6 +203,11 @@ const initTables = async (connection: mysql.Connection | mysql.Pool): Promise<vo
       INDEX idx_otp_expires (expiresAt)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   `);
+  await connection.query('ALTER TABLE otps MODIFY COLUMN otp VARCHAR(100) NOT NULL');
+  const [otpColumns] = await connection.query<any[]>('SHOW COLUMNS FROM otps');
+  if (!otpColumns.some((column: any) => column.Field === 'attempts')) {
+    await connection.query('ALTER TABLE otps ADD COLUMN attempts INT NOT NULL DEFAULT 0');
+  }
 
   // 7. Product Returns table (Manager Department)
   await connection.query(`
@@ -354,11 +367,15 @@ const initTables = async (connection: mysql.Connection | mysql.Pool): Promise<vo
  * Connect to MySQL and initialize database tables
  */
 export const connectDB = async (): Promise<void> => {
-  const host = process.env.DB_HOST || 'localhost';
+  const isProduction = process.env.NODE_ENV === 'production';
+  const host = process.env.DB_HOST || (isProduction ? '' : 'localhost');
   const port = parseInt(process.env.DB_PORT || '3306', 10);
-  const user = process.env.DB_USER || 'root';
+  const user = process.env.DB_USER || (isProduction ? '' : 'root');
   const password = process.env.DB_PASSWORD || '';
-  const database = process.env.DB_NAME || 'kltrends';
+  const database = process.env.DB_NAME || (isProduction ? '' : 'kltrends');
+  if (!host || !user || !password || !database) {
+    throw new Error('DB_HOST, DB_USER, DB_PASSWORD, and DB_NAME are required in production.');
+  }
 
   try {
     // 1. Ensure database exists

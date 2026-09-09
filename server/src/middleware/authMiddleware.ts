@@ -1,12 +1,13 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../types/index.js';
 import { verifyToken } from '../utils/jwt.js';
+import { User } from '../models/User.js';
 
-export const protect = (
+export const protect = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-): void => {
+): Promise<void> => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -21,7 +22,17 @@ export const protect = (
 
   try {
     const decoded = verifyToken(token);
-    req.user = decoded;
+    const currentUser = await User.findById(decoded.userId);
+    if (!currentUser) {
+      res.status(401).json({ success: false, error: 'Account is no longer available.' });
+      return;
+    }
+    req.user = {
+      userId: currentUser.id,
+      email: currentUser.email,
+      role: currentUser.role,
+      department: currentUser.department,
+    };
     next();
   } catch (error) {
     res.status(401).json({

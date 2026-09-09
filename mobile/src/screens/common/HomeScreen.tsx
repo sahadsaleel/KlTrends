@@ -78,11 +78,8 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
         case 'DailyExpenses':
           navigation.navigate('DailyExpenses' as any);
           break;
-        case 'PackagingDuties':
-          navigation.navigate('PackagingDuties' as any);
-          break;
-        case 'MediaDuties':
-          navigation.navigate('MediaDuties' as any);
+        case 'DailyPacking':
+          navigation.navigate('DailyPacking' as any);
           break;
         case 'Profile':
           navigation.navigate('EditProfile');
@@ -232,58 +229,17 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
             </>
           ) : department === 'packaging' ? (
             <>
-              {/* Packaging Duties */}
+              {/* Packaging */}
               <TouchableOpacity
                 style={styles.gridCard}
-                onPress={() => navigation.navigate('PackagingDuties' as any)}
+                onPress={() => navigation.navigate('DailyPacking' as any)}
                 activeOpacity={0.82}
               >
                 <View style={[styles.gridIcon, { backgroundColor: colors.primarySoft }]}>
                   <Ionicons name="cube" size={24} color={colors.primary} />
                 </View>
-                <Text style={styles.gridTitle}>Packaging Duties</Text>
+                <Text style={styles.gridTitle}>Packaging</Text>
                 <Text style={styles.gridSub}>Queue & dispatch list</Text>
-              </TouchableOpacity>
-
-              {/* Attendance */}
-              <TouchableOpacity
-                style={styles.gridCard}
-                onPress={() => navigation.navigate('Attendance')}
-                activeOpacity={0.82}
-              >
-                <View style={[styles.gridIcon, { backgroundColor: colors.primarySoft }]}>
-                  <Ionicons name="finger-print" size={24} color={colors.primaryLight} />
-                </View>
-                <Text style={styles.gridTitle}>Attendance</Text>
-                <Text style={styles.gridSub}>Check-in & timer</Text>
-              </TouchableOpacity>
-
-              {/* My Profile */}
-              <TouchableOpacity
-                style={styles.gridCard}
-                onPress={() => navigation.navigate('EditProfile')}
-                activeOpacity={0.82}
-              >
-                <View style={[styles.gridIcon, { backgroundColor: colors.successLight }]}>
-                  <Ionicons name="person" size={24} color={colors.success} />
-                </View>
-                <Text style={styles.gridTitle}>My Profile</Text>
-                <Text style={styles.gridSub}>Edit & update info</Text>
-              </TouchableOpacity>
-            </>
-          ) : department === 'media' ? (
-            <>
-              {/* Media Duties */}
-              <TouchableOpacity
-                style={styles.gridCard}
-                onPress={() => navigation.navigate('MediaDuties' as any)}
-                activeOpacity={0.82}
-              >
-                <View style={[styles.gridIcon, { backgroundColor: colors.primarySoft }]}>
-                  <Ionicons name="videocam" size={24} color={colors.primary} />
-                </View>
-                <Text style={styles.gridTitle}>Media Duties</Text>
-                <Text style={styles.gridSub}>Shoots & campaigns</Text>
               </TouchableOpacity>
 
               {/* Attendance */}
