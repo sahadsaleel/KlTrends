@@ -2,17 +2,49 @@ import mysql from 'mysql2/promise';
 
 let pool: mysql.Pool | null = null;
 
+export interface DbConfig {
+  host: string;
+  port: number;
+  user: string;
+  password: string;
+  database: string;
+}
+
+export const getDbConfig = (): DbConfig => {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const connectionUri = process.env.DATABASE_URL || process.env.MYSQL_URL;
+
+  if (connectionUri) {
+    try {
+      const parsed = new URL(connectionUri);
+      return {
+        host: parsed.hostname,
+        port: parsed.port ? parseInt(parsed.port, 10) : 3306,
+        user: decodeURIComponent(parsed.username),
+        password: decodeURIComponent(parsed.password),
+        database: parsed.pathname.replace(/^\//, ''),
+      };
+    } catch {
+      // Fallback to individual variables if URL parsing fails
+    }
+  }
+
+  const host = process.env.DB_HOST || process.env.MYSQLHOST || (isProduction ? '' : 'localhost');
+  const port = parseInt(process.env.DB_PORT || process.env.MYSQLPORT || '3306', 10);
+  const user = process.env.DB_USER || process.env.MYSQLUSER || (isProduction ? '' : 'root');
+  const password = process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || '';
+  const database = process.env.DB_NAME || process.env.MYSQLDATABASE || (isProduction ? '' : 'kltrends');
+
+  if (!host || !user || !database) {
+    throw new Error('Database host, user, and name are required in production.');
+  }
+
+  return { host, port, user, password, database };
+};
+
 export const getPool = (): mysql.Pool => {
   if (!pool) {
-    const isProduction = process.env.NODE_ENV === 'production';
-    const host = process.env.DB_HOST || (isProduction ? '' : 'localhost');
-    const port = parseInt(process.env.DB_PORT || '3306', 10);
-    const user = process.env.DB_USER || (isProduction ? '' : 'root');
-    const password = process.env.DB_PASSWORD || '';
-    const database = process.env.DB_NAME || (isProduction ? '' : 'kltrends');
-    if (!host || !user || !password || !database) {
-      throw new Error('DB_HOST, DB_USER, DB_PASSWORD, and DB_NAME are required in production.');
-    }
+    const { host, port, user, password, database } = getDbConfig();
 
     pool = mysql.createPool({
       host,
@@ -367,28 +399,24 @@ const initTables = async (connection: mysql.Connection | mysql.Pool): Promise<vo
  * Connect to MySQL and initialize database tables
  */
 export const connectDB = async (): Promise<void> => {
-  const isProduction = process.env.NODE_ENV === 'production';
-  const host = process.env.DB_HOST || (isProduction ? '' : 'localhost');
-  const port = parseInt(process.env.DB_PORT || '3306', 10);
-  const user = process.env.DB_USER || (isProduction ? '' : 'root');
-  const password = process.env.DB_PASSWORD || '';
-  const database = process.env.DB_NAME || (isProduction ? '' : 'kltrends');
-  if (!host || !user || !password || !database) {
-    throw new Error('DB_HOST, DB_USER, DB_PASSWORD, and DB_NAME are required in production.');
-  }
+  const { host, port, user, password, database } = getDbConfig();
 
   try {
-    // 1. Ensure database exists
-    const initialConn = await mysql.createConnection({
-      host,
-      port,
-      user,
-      password,
-      connectTimeout: 5000,
-    });
+    // 1. Ensure database exists if allowed (ignore errors on cloud providers like Railway where DB is already provisioned)
+    try {
+      const initialConn = await mysql.createConnection({
+        host,
+        port,
+        user,
+        password,
+        connectTimeout: 5000,
+      });
 
-    await initialConn.query(`CREATE DATABASE IF NOT EXISTS \`${database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`);
-    await initialConn.end();
+      await initialConn.query(`CREATE DATABASE IF NOT EXISTS \`${database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`);
+      await initialConn.end();
+    } catch (createErr: any) {
+      console.log(`[Database] Database check notice: ${createErr.message || createErr}`);
+    }
 
     // 2. Initialize connection pool
     const p = getPool();

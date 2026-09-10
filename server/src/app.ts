@@ -22,14 +22,20 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
     .map((origin) => origin.trim())
     .filter(Boolean);
 
-app.use(helmet());
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
 app.use(cors({
-    origin: allowedOrigins.length > 0
-        ? (origin, callback) => {
-            if (!origin || allowedOrigins.includes(origin)) callback(null, true);
-            else callback(new Error('Origin not allowed by CORS'));
+    origin: (origin, callback) => {
+        // Mobile apps, curl, Postman, server-to-server requests have no origin header
+        if (!origin) return callback(null, true);
+        // If ALLOWED_ORIGINS is not set or contains *, allow all origins
+        if (allowedOrigins.length === 0 || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+            return callback(null, true);
         }
-        : process.env.NODE_ENV === 'production' ? false : true,
+        return callback(new Error('Origin not allowed by CORS'));
+    },
+    credentials: true,
 }));
 
 app.use(express.json({ limit: '2mb' }));
