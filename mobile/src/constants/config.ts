@@ -18,23 +18,22 @@ const normalizeApiUrl = (url: string): string => {
   return normalizedUrl.endsWith('/api') ? normalizedUrl : `${normalizedUrl}/api`;
 };
 
-const getApiUrl = (): string | null => {
+const getApiUrl = (): string => {
   const configuredUrl =
     readNonEmptyString(process.env.EXPO_PUBLIC_API_URL) ||
     readNonEmptyString(Constants.expoConfig?.extra?.apiUrl);
 
-  // If a production (non-local HTTP) URL is configured, always use it
+  // If a production/cloud URL (like Railway) is configured, always use it
   if (configuredUrl && !/^http:\/\/(localhost|127\.0\.0\.1|192\.168\.|10\.|172\.)/i.test(configuredUrl)) {
     return normalizeApiUrl(configuredUrl);
   }
 
-  // If running in Web browser during development, connect to localhost:5000
-  if (Platform.OS === 'web' && isDevelopment) {
-    return configuredUrl ? normalizeApiUrl(configuredUrl) : 'http://localhost:5000/api';
-  }
+  // Only use local Wi-Fi auto-discovery if explicitly requested
+  if (process.env.EXPO_PUBLIC_USE_LOCAL_BACKEND === 'true') {
+    if (Platform.OS === 'web') {
+      return configuredUrl ? normalizeApiUrl(configuredUrl) : 'http://localhost:5000/api';
+    }
 
-  // Metro host discovery during local development (auto-detects current Wi-Fi IP)
-  if (isDevelopment) {
     const hostUri =
       Constants.expoConfig?.hostUri ||
       (Constants as any).manifest2?.extra?.expoClient?.hostUri ||
@@ -46,27 +45,30 @@ const getApiUrl = (): string | null => {
         return `http://${ip}:5000/api`;
       }
     }
+
+    if (configuredUrl) {
+      return normalizeApiUrl(configuredUrl);
+    }
+
+    if (Platform.OS === 'android') {
+      return 'http://10.0.2.2:5000/api';
+    }
   }
 
-  // Fallback to configured local URL if available
-  if (configuredUrl) {
-    return normalizeApiUrl(configuredUrl);
-  }
-
-  // Android emulator fallback in development
-  if (isDevelopment && Platform.OS === 'android') {
-    return 'http://10.0.2.2:5000/api';
-  }
-
-  return null;
+  // Default to deployed Railway backend
+  return configuredUrl ? normalizeApiUrl(configuredUrl) : DEFAULT_PRODUCTION_API_URL;
 };
+
+const DEFAULT_PRODUCTION_API_URL = 'https://kltrends.up.railway.app/api';
 
 const apiUrl = getApiUrl();
 
+// Log active API URL for developer visibility
+console.log('[KlTrends API] Active Base URL:', apiUrl);
+
 export const API_CONFIG = {
-  BASE_URL: apiUrl || 'https://api-url-not-configured.invalid/api',
-  IS_CONFIGURED: Boolean(apiUrl),
-  // Fail quickly when the API is unavailable instead of freezing every page
-  // for 30 seconds. Image uploads keep their own longer timeout.
-  TIMEOUT: 8000,
+  BASE_URL: apiUrl,
+  IS_CONFIGURED: true,
+  // Increased timeout to accommodate cloud latency & mobile cellular networks
+  TIMEOUT: 15000,
 };

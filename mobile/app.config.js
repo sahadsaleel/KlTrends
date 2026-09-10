@@ -6,7 +6,7 @@ module.exports = ({ config }) => {
   const apiUrl =
     typeof rawApiUrl === 'string' && rawApiUrl.trim()
       ? rawApiUrl.trim()
-      : null;
+      : 'https://kltrends.up.railway.app';
 
   return {
     ...config,
