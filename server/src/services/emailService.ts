@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
+import type SMTPTransport from 'nodemailer/lib/smtp-transport/index.js';
 
-interface SendOtpEmailOptions {
+export interface SendOtpEmailOptions {
   to: string;
   otp: string;
   purpose: 'login' | 'register' | 'forgot-password' | 'reset-password' | string;
@@ -8,53 +9,122 @@ interface SendOtpEmailOptions {
   name?: string;
 }
 
+export interface SendOtpResult {
+  success: boolean;
+  error?: string;
+  messageId?: string;
+}
+
 let transporter: nodemailer.Transporter | null = null;
 
-const getTransporter = (): nodemailer.Transporter | null => {
-  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+export const resetTransporter = (): void => {
+  if (transporter) {
+    try {
+      transporter.close();
+    } catch {
+      // ignore
+    }
+  }
+  transporter = null;
+};
+
+export const getTransporter = (): nodemailer.Transporter | null => {
+  const host = process.env.SMTP_HOST?.trim() || 'smtp.gmail.com';
   const port = parseInt(process.env.SMTP_PORT || '587', 10);
   const secure = process.env.SMTP_SECURE === 'true' || port === 465;
-  const user = process.env.SMTP_USER?.trim();
-  const pass = process.env.SMTP_PASS?.trim();
+  const user = process.env.SMTP_USER?.trim().replace(/["']/g, '');
+  // Strip all whitespace and surrounding quotes from app passwords (e.g. "ibpw wqwu xonh wiwf" -> "ibpwwqwuxonhwiwf")
+  const pass = process.env.SMTP_PASS?.trim().replace(/["'\s]/g, '');
 
   if (!user || !pass) {
     return null;
   }
 
   if (!transporter) {
-    const isGmail = host.toLowerCase().includes('gmail') || user.toLowerCase().includes('@gmail.com');
-
-    if (isGmail) {
-      transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user,
-          pass,
-        },
-        pool: true,
-        maxConnections: 3,
-        connectionTimeout: 15000,
-        greetingTimeout: 15000,
-        socketTimeout: 20000,
-      });
-    } else {
-      transporter = nodemailer.createTransport({
-        host,
-        port,
-        secure,
-        auth: {
-          user,
-          pass,
-        },
-        pool: true,
-        maxConnections: 3,
-        connectionTimeout: 15000,
-        greetingTimeout: 15000,
-        socketTimeout: 20000,
-      });
-    }
+    const smtpOptions = {
+      host,
+      port,
+      secure,
+      auth: {
+        user,
+        pass,
+      },
+      // Force IPv4 in containerized environments (Railway/Docker) to prevent IPv6 DNS hangs
+      family: 4,
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+      tls: {
+        rejectUnauthorized: process.env.NODE_ENV === 'production',
+      },
+    } as SMTPTransport.Options;
+    transporter = nodemailer.createTransport(smtpOptions);
   }
   return transporter;
+};
+
+/**
+ * Diagnostic helper to verify SMTP credentials and server connectivity.
+ */
+export const verifySmtpConnection = async (): Promise<{
+  configured: boolean;
+  connected: boolean;
+  host: string;
+  port: number;
+  user: string;
+  error?: string;
+}> => {
+  const host = process.env.SMTP_HOST?.trim() || 'smtp.gmail.com';
+  const port = parseInt(process.env.SMTP_PORT || '587', 10);
+  const user = process.env.SMTP_USER?.trim().replace(/["']/g, '') || '';
+  const pass = process.env.SMTP_PASS?.trim().replace(/["'\s]/g, '') || '';
+
+  if (!user || !pass) {
+    return {
+      configured: false,
+      connected: false,
+      host,
+      port,
+      user: user ? `${user.slice(0, 3)}***` : '(not set)',
+      error: 'SMTP_USER or SMTP_PASS is missing in environment variables',
+    };
+  }
+
+  try {
+    // Test on a fresh, non-cached transporter
+    const testOptions = {
+      host,
+      port,
+      secure: process.env.SMTP_SECURE === 'true' || port === 465,
+      auth: { user, pass },
+      family: 4,
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+      tls: {
+        rejectUnauthorized: process.env.NODE_ENV === 'production',
+      },
+    } as SMTPTransport.Options;
+    const testTransporter = nodemailer.createTransport(testOptions);
+
+    await testTransporter.verify();
+    return {
+      configured: true,
+      connected: true,
+      host,
+      port,
+      user: `${user.slice(0, 3)}***@${user.split('@')[1] || ''}`,
+    };
+  } catch (error: any) {
+    return {
+      configured: true,
+      connected: false,
+      host,
+      port,
+      user: `${user.slice(0, 3)}***@${user.split('@')[1] || ''}`,
+      error: error?.message || String(error),
+    };
+  }
 };
 
 /**
@@ -66,7 +136,12 @@ export const sendOtpEmail = async ({
   purpose,
   role,
   name,
-}: SendOtpEmailOptions): Promise<boolean> => {
+}: SendOtpEmailOptions): Promise<SendOtpResult> => {
+  // Always log OTP to server console with prominent delimiter for Railway audit logs and quick troubleshooting
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log(`[OTP Delivery] 🔑 OTP for ${to} (${role} - ${purpose}): [ ${otp} ]`);
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
   const isRegister = purpose === 'register';
   const isReset = purpose === 'forgot-password' || purpose === 'reset-password';
   const roleTitle = role === 'admin' ? 'Administrator' : 'Employee';
@@ -152,22 +227,28 @@ ${currentYear} KL Trends. All rights reserved.`;
 </html>
   `;
 
-  const smtpUser = process.env.SMTP_USER?.trim();
-  const smtpPass = process.env.SMTP_PASS?.trim();
+  const smtpUser = process.env.SMTP_USER?.trim().replace(/["']/g, '');
+  const smtpPass = process.env.SMTP_PASS?.trim().replace(/["'\s]/g, '');
 
   if (!smtpUser || !smtpPass) {
-    console.error('[Nodemailer] SMTP configuration is missing; verification email was not sent.');
-    return process.env.NODE_ENV !== 'production';
+    const missingMsg = `SMTP configuration is missing on the server (SMTP_USER=${smtpUser ? 'SET' : 'MISSING'}, SMTP_PASS=${smtpPass ? 'SET' : 'MISSING'}).`;
+    console.error(`[Nodemailer] ⚠️ ${missingMsg}`);
+    
+    // In local development without SMTP, allow developer testing using the logged OTP
+    if (process.env.NODE_ENV !== 'production') {
+      return { success: true };
+    }
+    return { success: false, error: missingMsg };
   }
 
   try {
     const mailer = getTransporter();
     if (!mailer) {
-      console.error('[Nodemailer] Transporter could not be created.');
-      return false;
+      console.error('[Nodemailer] ❌ Transporter could not be created.');
+      return { success: false, error: 'Could not create email transport' };
     }
 
-    const fromAddress = process.env.SMTP_FROM || `"KL Trends Security" <${smtpUser}>`;
+    const fromAddress = process.env.SMTP_FROM?.trim() || `"KL Trends Security" <${smtpUser}>`;
 
     const info = await mailer.sendMail({
       from: fromAddress,
@@ -184,10 +265,22 @@ ${currentYear} KL Trends. All rights reserved.`;
       },
     });
 
-    console.log(`[Nodemailer] ✅ Email successfully sent to ${to} (MessageId: ${info.messageId})`);
-    return true;
+    console.log(`[Nodemailer] ✅ Email successfully delivered to ${to} (MessageId: ${info.messageId})`);
+    return { success: true, messageId: info.messageId };
   } catch (error: any) {
-    console.error('[Nodemailer Error] Failed to send verification email:', error?.code || error?.name || 'unknown error');
-    return false;
+    // Reset transporter so future attempts don't reuse a broken socket
+    resetTransporter();
+
+    console.error(`[Nodemailer Error] ❌ Failed to send verification email to ${to}:`, {
+      message: error?.message || 'unknown error',
+      code: error?.code,
+      response: error?.response,
+      command: error?.command,
+    });
+
+    return {
+      success: false,
+      error: error?.message || 'SMTP delivery failed',
+    };
   }
 };

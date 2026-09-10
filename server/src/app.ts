@@ -16,6 +16,7 @@ import packagingRoutes from './routes/packagingRoutes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 const app: Application = express();
+app.set('trust proxy', 1);
 
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
     .split(',')

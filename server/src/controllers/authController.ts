@@ -10,10 +10,7 @@ import { AuthenticatedRequest } from '../types/index.js';
 import { uploadProfileImage } from '../services/cloudinaryService.js';
 import { isValidDepartment, normalizeDepartment, VALID_DEPARTMENTS } from '../validators/index.js';
 
-const queueOtpEmail = (options: Parameters<typeof sendOtpEmail>[0]): void => {
-  void sendOtpEmail(options).catch((error) => console.error('[Email] OTP delivery failed:', error));
-};
-
+// Helper to generate 6-digit OTP
 const generateOtp = (): string => crypto.randomInt(100000, 1000000).toString();
 
 // Helper for password validation requirements
@@ -124,13 +121,21 @@ export const sendOtp = async (
         createdAt: new Date(),
       });
 
-      queueOtpEmail({
+      const emailResult = await sendOtpEmail({
         to: targetEmail,
         otp,
         purpose: 'forgot-password',
         role: existingUser.role,
         name: existingUser.fullName || existingUser.username,
       });
+
+      if (!emailResult.success) {
+        res.status(502).json({
+          success: false,
+          error: emailResult.error || 'Failed to deliver verification email. Please check your email configuration.',
+        });
+        return;
+      }
 
       res.status(200).json({
         success: true,
@@ -192,13 +197,21 @@ export const sendOtp = async (
 
       const recipientName = registrationData?.fullName || registrationData?.username || undefined;
 
-      queueOtpEmail({
+      const emailResult = await sendOtpEmail({
         to: cleanEmail,
         otp,
         purpose: 'register',
         role: effectiveRole,
         name: recipientName,
       });
+
+      if (!emailResult.success) {
+        res.status(502).json({
+          success: false,
+          error: emailResult.error || 'Failed to deliver verification email. Please check your email configuration or contact administrator.',
+        });
+        return;
+      }
 
       res.status(200).json({
         success: true,
@@ -229,13 +242,21 @@ export const sendOtp = async (
         createdAt: new Date(),
       });
 
-      queueOtpEmail({
+      const emailResult = await sendOtpEmail({
         to: cleanEmail,
         otp,
         purpose: 'login',
         role: effectiveRole,
         name: existingUser.fullName || existingUser.username,
       });
+
+      if (!emailResult.success) {
+        res.status(502).json({
+          success: false,
+          error: emailResult.error || 'Failed to deliver verification email.',
+        });
+        return;
+      }
 
       res.status(200).json({
         success: true,
@@ -786,13 +807,21 @@ export const forgotPassword = async (
       createdAt: new Date(),
     });
 
-    queueOtpEmail({
+    const emailResult = await sendOtpEmail({
       to: targetEmail,
       otp,
       purpose: 'forgot-password',
       role: user.role,
       name: user.fullName || user.username,
     });
+
+    if (!emailResult.success) {
+      res.status(502).json({
+        success: false,
+        error: emailResult.error || 'Failed to deliver password reset email. Please contact administrator.',
+      });
+      return;
+    }
 
     res.status(200).json({
       success: true,

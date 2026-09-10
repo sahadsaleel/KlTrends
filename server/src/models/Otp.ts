@@ -55,8 +55,8 @@ export class OtpModel implements IOtp {
 
 export const Otp = {
   async findOne(filter: Record<string, any>): Promise<IOtp | null> {
-    const conditions: string[] = ['expiresAt > NOW()', 'attempts < 5'];
-    const params: any[] = [];
+    const conditions: string[] = ['expiresAt > ?', 'attempts < 5'];
+    const params: any[] = [new Date()];
     let submittedOtp: string | undefined;
 
     for (const [key, value] of Object.entries(filter)) {
