@@ -17,6 +17,7 @@ module.exports = ({ config }) => {
     },
     android: {
       ...config.android,
+      package: 'com.kltrends.app',
       permissions: ['android.permission.CAMERA', 'android.permission.INTERNET'],
     },
   };

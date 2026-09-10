@@ -10,6 +10,7 @@
     "icon": "./assets/logo.png",
     "userInterfaceStyle": "light",
     "android": {
+      "package": "com.kltrends.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/logo.png",
         "backgroundColor": "#FFFFFF"
@@ -37,6 +38,12 @@
           "backgroundColor": "#570490"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "apiUrl": "https://kltrends.up.railway.app",
+      "eas": {
+        "projectId": "e0ee1992-b8f8-4221-994b-7c33580c6837"
+      }
+    }
   }
 }
