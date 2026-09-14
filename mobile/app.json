@@ -2,7 +2,7 @@
   "expo": {
     "name": "KL Trends",
     "slug": "kltrends",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "platforms": [
       "android"
@@ -11,6 +11,7 @@
     "userInterfaceStyle": "light",
     "android": {
       "package": "com.kltrends.app",
+      "versionCode": 2,
       "adaptiveIcon": {
         "foregroundImage": "./assets/logo.png",
         "backgroundColor": "#FFFFFF"
