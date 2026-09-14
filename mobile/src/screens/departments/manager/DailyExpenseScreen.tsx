@@ -149,87 +149,40 @@ export const DailyExpenseScreen: React.FC<Props> = ({ navigation }) => {
           />
         }
       >
-        {/* Hero Card */}
-        <View style={styles.heroCard}>
-          <View style={styles.heroHeader}>
+        {/* Summary + Actions */}
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryRow}>
             <View>
-              <Text style={styles.heroSubtitle}>Manager Department</Text>
-              <Text style={styles.heroTitle}>Daily Expenses</Text>
-            </View>
-            <View style={styles.heroIconBox}>
-              <Ionicons name="wallet-outline" size={26} color="#FFFFFF" />
-            </View>
-          </View>
-          <Text style={styles.heroDescription}>
-            Manage and monitor store operations, fuel, post office dispatches, customer returns, and departmental expenses.
-          </Text>
-
-          {/* Action Buttons */}
-          <View style={styles.actionRow}>
-            <TouchableOpacity
-              style={styles.primaryActionBtn}
-              onPress={() => navigation.navigate('AddDailyExpense')}
-              activeOpacity={0.85}
-            >
-              <Ionicons name="add-circle" size={18} color="#FFFFFF" />
-              <Text style={styles.primaryActionBtnText}>Add Expense</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.secondaryActionBtn}
-              onPress={() => navigation.navigate('ExpenseHistory')}
-              activeOpacity={0.85}
-            >
-              <Ionicons name="receipt" size={16} color={colors.primary} />
-              <Text style={styles.secondaryActionBtnText}>View History</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Total Expense Highlight Banner */}
-        <View style={styles.totalCard}>
-          <View style={styles.totalCardLeft}>
-            <Text style={styles.totalCardLabel}>Total Expenses Recorded</Text>
-            <Text style={styles.totalCardAmount}>
-              ₹{Number(summary?.totalAmount || 0).toLocaleString('en-IN')}
-            </Text>
-          </View>
-          <View style={styles.totalCardRight}>
-            <Text style={styles.totalCardCount}>{summary?.count || recentExpenses.length}</Text>
-            <Text style={styles.totalCardCountLabel}>transactions</Text>
-          </View>
-        </View>
-
-        {/* Category Shortcuts Grid */}
-        <Text style={styles.sectionTitle}>Expense Categories</Text>
-        <View style={styles.categoryGrid}>
-          {[
-            { label: 'Daily Expense', icon: 'wallet-outline', color: '#6366F1' },
-            { label: 'Post Office KLTrends', icon: 'mail-outline', color: '#7E22CE' },
-            { label: 'Post Office KLIndia', icon: 'globe-outline', color: '#0369A1' },
-            { label: 'Return Amount', icon: 'arrow-undo-outline', color: '#DC2626' },
-            { label: 'Fuel', icon: 'car-outline', color: '#D97706' },
-            { label: 'Custom', icon: 'create-outline', color: '#059669' },
-          ].map((cat, idx) => (
-            <TouchableOpacity
-              key={idx}
-              style={styles.catCard}
-              onPress={() => navigation.navigate('ExpenseHistory')}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.catIconBox, { backgroundColor: cat.color + '15' }]}>
-                <Ionicons name={cat.icon as any} size={18} color={cat.color} />
-              </View>
-              <Text style={styles.catCardLabel} numberOfLines={2}>
-                {cat.label}
+              <Text style={styles.summaryAmount}>
+                ₹{Number(summary?.totalAmount || 0).toLocaleString('en-IN')}
               </Text>
-            </TouchableOpacity>
-          ))}
+              <Text style={styles.summaryLabel}>
+                {summary?.count || recentExpenses.length} transactions
+              </Text>
+            </View>
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                style={styles.primaryBtn}
+                onPress={() => navigation.navigate('AddDailyExpense')}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="add" size={18} color="#FFFFFF" />
+                <Text style={styles.primaryBtnText}>Add</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.secondaryBtn}
+                onPress={() => navigation.navigate('ExpenseHistory')}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="time-outline" size={16} color={colors.primary} />
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
 
-        {/* Recent Expenses Header */}
-        <View style={styles.recentHeaderRow}>
-          <Text style={styles.sectionTitle}>Recent Expenses</Text>
+        {/* Recent Expenses */}
+        <View style={styles.sectionRow}>
+          <Text style={styles.sectionTitle}>Recent</Text>
           <TouchableOpacity
             onPress={() => navigation.navigate('ExpenseHistory')}
             activeOpacity={0.7}
@@ -238,13 +191,12 @@ export const DailyExpenseScreen: React.FC<Props> = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Recent Expenses List */}
         {loading ? (
           <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 20 }} />
         ) : recentExpenses.length === 0 ? (
           <View style={styles.emptyCard}>
-            <Ionicons name="receipt-outline" size={40} color={colors.textMuted} />
-            <Text style={styles.emptyText}>No expenses recorded yet.</Text>
+            <Ionicons name="receipt-outline" size={36} color={colors.textMuted} />
+            <Text style={styles.emptyText}>No expenses yet</Text>
             <TouchableOpacity
               style={styles.emptyAddBtn}
               onPress={() => navigation.navigate('AddDailyExpense')}
@@ -257,22 +209,21 @@ export const DailyExpenseScreen: React.FC<Props> = ({ navigation }) => {
             const badge = getCategoryBadgeColor(item.category);
             const label = getCategoryLabel(item.category, item.customCategoryName);
             return (
-              <View key={item.id} style={styles.recentItemCard}>
+              <View key={item.id} style={styles.recentItem}>
                 <View style={styles.recentItemLeft}>
-                  <View style={[styles.recentItemBadge, { backgroundColor: badge.bg }]}>
-                    <Text style={[styles.recentItemBadgeText, { color: badge.text }]} numberOfLines={1}>
+                  <View style={[styles.recentBadge, { backgroundColor: badge.bg }]}>
+                    <Text style={[styles.recentBadgeText, { color: badge.text }]} numberOfLines={1}>
                       {label}
                     </Text>
                   </View>
-                  <Text style={styles.recentItemDate}>{formatDisplayDate(item.date)}</Text>
+                  <Text style={styles.recentDate}>{formatDisplayDate(item.date)}</Text>
                   {item.description ? (
-                    <Text style={styles.recentItemDesc} numberOfLines={1}>
+                    <Text style={styles.recentDesc} numberOfLines={1}>
                       {item.description}
                     </Text>
                   ) : null}
                 </View>
-
-                <Text style={styles.recentItemAmount}>
+                <Text style={styles.recentAmount}>
                   ₹{Number(item.amount || 0).toLocaleString('en-IN')}
                 </Text>
               </View>
@@ -295,165 +246,72 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     paddingBottom: spacing.xxl + 40,
   },
-  heroCard: {
+  summaryCard: {
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.lg,
-    padding: spacing.lg,
+    padding: spacing.md,
     marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.borderLight,
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 3 },
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 6,
+    elevation: 2,
   },
-  heroHeader: {
+  summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.xs,
   },
-  heroSubtitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.primary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  heroTitle: {
+  summaryAmount: {
     fontSize: 22,
     fontWeight: '800',
     color: colors.textPrimary,
   },
-  heroIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  heroDescription: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    lineHeight: 18,
-    marginVertical: spacing.sm,
+  summaryLabel: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 2,
   },
   actionRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.xs,
+    gap: 8,
   },
-  primaryActionBtn: {
-    flex: 1,
+  primaryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     backgroundColor: colors.primary,
-    paddingVertical: 12,
+    paddingVertical: 9,
+    paddingHorizontal: 14,
     borderRadius: borderRadius.md,
-    gap: 6,
+    gap: 4,
   },
-  primaryActionBtnText: {
+  primaryBtnText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
   },
-  secondaryActionBtn: {
-    flex: 1,
-    flexDirection: 'row',
+  secondaryBtn: {
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.primarySoft,
-    paddingVertical: 12,
+    width: 38,
+    height: 38,
     borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.primaryLight,
-    gap: 6,
   },
-  secondaryActionBtnText: {
-    color: colors.primary,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  totalCard: {
+  sectionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: colors.primarySoft,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.primaryLight,
-  },
-  totalCardLeft: {
-    flex: 1,
-  },
-  totalCardLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  totalCardAmount: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: colors.primary,
-    marginTop: 2,
-  },
-  totalCardRight: {
-    alignItems: 'flex-end',
-  },
-  totalCardCount: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  totalCardCountLabel: {
-    fontSize: 11,
-    color: colors.textMuted,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.textPrimary,
     marginBottom: spacing.sm,
   },
-  categoryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-    marginBottom: spacing.md,
-  },
-  catCard: {
-    width: '31%',
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.md,
-    padding: spacing.sm,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-  catIconBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  catCardLabel: {
-    fontSize: 11,
-    fontWeight: '600',
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
     color: colors.textPrimary,
-    textAlign: 'center',
-  },
-  recentHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
   },
   seeAllText: {
     fontSize: 13,
@@ -468,7 +326,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.borderLight,
-    marginTop: spacing.xs,
   },
   emptyText: {
     fontSize: 14,
@@ -487,14 +344,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
-  recentItemCard: {
+  recentItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.md,
     padding: spacing.md,
-    marginBottom: spacing.xs,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: colors.borderLight,
   },
@@ -502,29 +359,29 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: spacing.sm,
   },
-  recentItemBadge: {
+  recentBadge: {
     alignSelf: 'flex-start',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: borderRadius.sm,
     marginBottom: 4,
   },
-  recentItemBadgeText: {
+  recentBadgeText: {
     fontSize: 11,
     fontWeight: '700',
   },
-  recentItemDate: {
+  recentDate: {
     fontSize: 12,
     fontWeight: '600',
     color: colors.textSecondary,
   },
-  recentItemDesc: {
+  recentDesc: {
     fontSize: 11,
     color: colors.textMuted,
     marginTop: 2,
   },
-  recentItemAmount: {
-    fontSize: 17,
+  recentAmount: {
+    fontSize: 16,
     fontWeight: '800',
     color: colors.textPrimary,
   },

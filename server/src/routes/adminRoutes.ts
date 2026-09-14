@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   getDashboardStats,
+  getDashboardAnalytics,
   getAllEmployees,
   getAllEmployeeReports,
   createEmployee,
@@ -23,6 +24,7 @@ router.use(adminOnly);
 
 // Admin dashboard & management
 router.get('/dashboard', getDashboardStats);
+router.get('/dashboard/analytics', getDashboardAnalytics);
 router.get('/employees', getAllEmployees);
 router.post('/employees', createEmployee);
 router.put('/employees/:id', updateEmployee);

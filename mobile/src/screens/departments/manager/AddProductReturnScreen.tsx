@@ -52,24 +52,21 @@ export const AddProductReturnScreen: React.FC<Props> = ({ navigation }) => {
   }
 
   const handleSave = async () => {
-    // 1. Date validation
     if (!/^\d{2}-\d{2}-\d{4}$/.test(date)) {
       Alert.alert('Invalid Date', 'Please enter date in DD-MM-YYYY format.');
       return;
     }
 
-    // 2. Order source validation
     if (!orderSource || (orderSource !== 'kltrends' && orderSource !== 'klindia')) {
       Alert.alert('Missing Order Source', 'Please select an order source.');
       return;
     }
 
-    // 3. Return quantity validation
     const parsedQty = parseInt(returnQuantity.trim(), 10);
     if (!returnQuantity.trim() || isNaN(parsedQty) || parsedQty <= 0) {
       Alert.alert(
         'Invalid Quantity',
-        'Number of returned products is required and must be a positive number greater than zero.'
+        'Return quantity must be a positive number greater than zero.'
       );
       return;
     }
@@ -86,7 +83,7 @@ export const AddProductReturnScreen: React.FC<Props> = ({ navigation }) => {
     if (result.success) {
       Alert.alert(
         'Success',
-        `Successfully recorded return of ${parsedQty} product(s) for ${
+        `Recorded return of ${parsedQty} product(s) for ${
           orderSource === 'kltrends' ? 'KLTrends' : 'KLIndia'
         }.`,
         [
@@ -113,7 +110,7 @@ export const AddProductReturnScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <AppHeader
-        title="New Product Return"
+        title="Add Return"
         showLogo={false}
         showBackButton={true}
         onBackPress={() => navigation.goBack()}
@@ -129,28 +126,13 @@ export const AddProductReturnScreen: React.FC<Props> = ({ navigation }) => {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Top Banner */}
-          <View style={styles.banner}>
-            <View style={styles.bannerIconBox}>
-              <Ionicons name="cube-outline" size={24} color={colors.primary} />
-            </View>
-            <View style={styles.bannerTextBox}>
-              <Text style={styles.bannerTitle}>Record Product Return</Text>
-              <Text style={styles.bannerSub}>
-                Record return counts for online, Instagram, or website orders
-              </Text>
-            </View>
-          </View>
-
           {/* Form Card */}
           <View style={styles.card}>
-            {/* Date Field */}
+            {/* Date */}
             <View style={styles.field}>
-              <Text style={styles.label}>
-                Date <Text style={styles.requiredStar}>*</Text>
-              </Text>
+              <Text style={styles.label}>Date</Text>
               <View style={styles.inputWrap}>
-                <Ionicons name="calendar-outline" size={19} color={colors.primary} />
+                <Ionicons name="calendar-outline" size={18} color={colors.primary} />
                 <TextInput
                   style={styles.input}
                   value={date}
@@ -161,84 +143,70 @@ export const AddProductReturnScreen: React.FC<Props> = ({ navigation }) => {
                   maxLength={10}
                 />
               </View>
-              <Text style={styles.fieldHint}>Format: DD-MM-YYYY</Text>
             </View>
 
-            {/* Order Source Selection */}
+            {/* Order Source */}
             <View style={styles.field}>
-              <Text style={styles.label}>
-                Order Source <Text style={styles.requiredStar}>*</Text>
-              </Text>
-
-              {/* KLTrends Option */}
-              <TouchableOpacity
-                style={[
-                  styles.radioCard,
-                  orderSource === 'kltrends' && styles.radioCardSelected,
-                ]}
-                onPress={() => setOrderSource('kltrends')}
-                activeOpacity={0.8}
-              >
-                <View style={styles.radioRow}>
-                  <View
+              <Text style={styles.label}>Order Source</Text>
+              <View style={styles.sourceRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.sourceOption,
+                    orderSource === 'kltrends' && styles.sourceOptionSelected,
+                  ]}
+                  onPress={() => setOrderSource('kltrends')}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons
+                    name="logo-instagram"
+                    size={18}
+                    color={orderSource === 'kltrends' ? '#FFFFFF' : '#7E22CE'}
+                  />
+                  <Text
                     style={[
-                      styles.radioCircle,
-                      orderSource === 'kltrends' && styles.radioCircleSelected,
+                      styles.sourceOptionText,
+                      orderSource === 'kltrends' && styles.sourceOptionTextSelected,
                     ]}
                   >
-                    {orderSource === 'kltrends' && <View style={styles.radioInner} />}
-                  </View>
-                  <View style={styles.radioInfo}>
-                    <Text style={styles.radioTitle}>KLTrends</Text>
-                    <Text style={styles.radioSub}>Online & Instagram Orders</Text>
-                  </View>
-                </View>
-                <View style={[styles.sourceBadge, { backgroundColor: '#F3E8FF' }]}>
-                  <Text style={[styles.sourceBadgeText, { color: '#7E22CE' }]}>Social & Online</Text>
-                </View>
-              </TouchableOpacity>
+                    KLTrends
+                  </Text>
+                </TouchableOpacity>
 
-              {/* KLIndia Option */}
-              <TouchableOpacity
-                style={[
-                  styles.radioCard,
-                  orderSource === 'klindia' && styles.radioCardSelected,
-                ]}
-                onPress={() => setOrderSource('klindia')}
-                activeOpacity={0.8}
-              >
-                <View style={styles.radioRow}>
-                  <View
+                <TouchableOpacity
+                  style={[
+                    styles.sourceOption,
+                    orderSource === 'klindia' && styles.sourceOptionSelected,
+                  ]}
+                  onPress={() => setOrderSource('klindia')}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons
+                    name="globe-outline"
+                    size={18}
+                    color={orderSource === 'klindia' ? '#FFFFFF' : '#0369A1'}
+                  />
+                  <Text
                     style={[
-                      styles.radioCircle,
-                      orderSource === 'klindia' && styles.radioCircleSelected,
+                      styles.sourceOptionText,
+                      orderSource === 'klindia' && styles.sourceOptionTextSelected,
                     ]}
                   >
-                    {orderSource === 'klindia' && <View style={styles.radioInner} />}
-                  </View>
-                  <View style={styles.radioInfo}>
-                    <Text style={styles.radioTitle}>KLIndia</Text>
-                    <Text style={styles.radioSub}>Website Orders</Text>
-                  </View>
-                </View>
-                <View style={[styles.sourceBadge, { backgroundColor: '#E0F2FE' }]}>
-                  <Text style={[styles.sourceBadgeText, { color: '#0369A1' }]}>Website</Text>
-                </View>
-              </TouchableOpacity>
+                    KLIndia
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
-            {/* Return Quantity Field */}
+            {/* Quantity */}
             <View style={styles.field}>
-              <Text style={styles.label}>
-                Number of Returned Products <Text style={styles.requiredStar}>*</Text>
-              </Text>
+              <Text style={styles.label}>Return Quantity</Text>
               <View style={styles.inputWrap}>
-                <Ionicons name="layers-outline" size={19} color={colors.primary} />
+                <Ionicons name="layers-outline" size={18} color={colors.primary} />
                 <TextInput
                   style={styles.input}
                   value={returnQuantity}
                   onChangeText={setReturnQuantity}
-                  placeholder="Enter quantity (e.g. 5)"
+                  placeholder="Enter quantity"
                   placeholderTextColor={colors.textMuted}
                   keyboardType="number-pad"
                 />
@@ -248,18 +216,17 @@ export const AddProductReturnScreen: React.FC<Props> = ({ navigation }) => {
                   </TouchableOpacity>
                 )}
               </View>
-              <Text style={styles.fieldHint}>Must be a valid positive integer greater than 0</Text>
             </View>
 
-            {/* Notes Field */}
+            {/* Notes */}
             <View style={styles.field}>
-              <Text style={styles.label}>Notes (Optional)</Text>
+              <Text style={styles.label}>Notes</Text>
               <View style={[styles.inputWrap, styles.textAreaWrap]}>
                 <TextInput
                   style={[styles.input, styles.textArea]}
                   value={notes}
                   onChangeText={setNotes}
-                  placeholder="e.g. Customer returned damaged product, wrong size, etc."
+                  placeholder="Optional notes..."
                   placeholderTextColor={colors.textMuted}
                   multiline
                   numberOfLines={3}
@@ -268,7 +235,7 @@ export const AddProductReturnScreen: React.FC<Props> = ({ navigation }) => {
               </View>
             </View>
 
-            {/* Save Button */}
+            {/* Save */}
             <TouchableOpacity
               style={[styles.submitButton, saving && styles.submitButtonDisabled]}
               onPress={handleSave}
@@ -303,44 +270,6 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     paddingBottom: spacing.xxl,
   },
-  banner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.cardBackground,
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
-    marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  bannerIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.primarySoft,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
-  },
-  bannerTextBox: {
-    flex: 1,
-  },
-  bannerTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: 2,
-  },
-  bannerSub: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    lineHeight: 16,
-  },
   card: {
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.lg,
@@ -354,22 +283,13 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   field: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   label: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  },
-  requiredStar: {
-    color: colors.error,
-    fontWeight: '700',
-  },
-  fieldHint: {
-    fontSize: 11,
-    color: colors.textMuted,
-    marginTop: 4,
+    color: colors.textSecondary,
+    marginBottom: 6,
   },
   inputWrap: {
     flexDirection: 'row',
@@ -379,7 +299,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: borderRadius.md,
     paddingHorizontal: spacing.sm + 2,
-    height: 48,
+    height: 46,
   },
   input: {
     flex: 1,
@@ -389,7 +309,7 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   textAreaWrap: {
-    height: 90,
+    height: 80,
     alignItems: 'flex-start',
     paddingVertical: spacing.xs + 2,
   },
@@ -397,66 +317,33 @@ const styles = StyleSheet.create({
     marginLeft: 0,
     height: '100%',
   },
-  radioCard: {
+  sourceRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  sourceOption: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     backgroundColor: colors.surface,
     borderWidth: 1.5,
     borderColor: colors.border,
     borderRadius: borderRadius.md,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
+    paddingVertical: 12,
+    gap: 8,
   },
-  radioCardSelected: {
+  sourceOptionSelected: {
     borderColor: colors.primary,
-    backgroundColor: colors.primarySoft,
-  },
-  radioRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  radioCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: colors.textMuted,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.sm + 2,
-  },
-  radioCircleSelected: {
-    borderColor: colors.primary,
-  },
-  radioInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
     backgroundColor: colors.primary,
   },
-  radioInfo: {
-    flex: 1,
-  },
-  radioTitle: {
-    fontSize: 15,
+  sourceOptionText: {
+    fontSize: 14,
     fontWeight: '700',
     color: colors.textPrimary,
   },
-  radioSub: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: 1,
-  },
-  sourceBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: borderRadius.sm,
-  },
-  sourceBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
+  sourceOptionTextSelected: {
+    color: '#FFFFFF',
   },
   submitButton: {
     flexDirection: 'row',
@@ -464,8 +351,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.primary,
     borderRadius: borderRadius.md,
-    height: 50,
-    marginTop: spacing.sm,
+    height: 48,
+    marginTop: spacing.xs,
     shadowColor: colors.primary,
     shadowOpacity: 0.3,
     shadowOffset: { width: 0, height: 4 },
@@ -477,7 +364,7 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     marginLeft: spacing.xs,
   },

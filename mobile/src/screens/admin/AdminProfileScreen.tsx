@@ -6,19 +6,17 @@ import {
   ScrollView,
   TextInput,
   Image,
-  Alert as NativeAlert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Text } from '../../components/common/Text';
-import { AppHeader } from '../../components/common/AppHeader';
 import { BottomNavBar, TabName } from '../../components/common/BottomNavBar';
-import { spacing, borderRadius } from '../../theme/spacing';
 import { colors } from '../../theme/colors';
 import { AppAlert as Alert } from '../../utils/appAlert';
 import { useAuth } from '../../hooks/useAuth';
@@ -40,6 +38,10 @@ export const AdminProfileScreen: React.FC<Props> = ({ navigation }) => {
       if (user.avatarUrl) setAvatarUrl(user.avatarUrl);
     }
   }, [user]);
+
+  const hasChanges =
+    fullName.trim() !== (user?.fullName || user?.username || '').trim() ||
+    (avatarUrl || '').trim() !== (user?.avatarUrl || '').trim();
 
   const handlePickImage = async () => {
     try {
@@ -75,7 +77,7 @@ export const AdminProfileScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleRemoveImage = () => {
-    Alert.alert('Remove profile photo', 'Your photo will be removed when you save these changes.', [
+    Alert.alert('Remove Profile Photo', 'Are you sure you want to remove your profile photo?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Remove', style: 'destructive', onPress: () => setAvatarUrl('') },
     ]);
@@ -103,9 +105,7 @@ export const AdminProfileScreen: React.FC<Props> = ({ navigation }) => {
         await login(response.user, token);
       }
 
-      Alert.alert('Success', 'Admin profile updated successfully!', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      Alert.alert('Success', 'Profile updated successfully!');
     } else {
       Alert.alert('Error', response.error || 'Failed to update admin profile.');
     }
@@ -135,151 +135,207 @@ export const AdminProfileScreen: React.FC<Props> = ({ navigation }) => {
 
   const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(
     fullName || 'Admin'
-  )}&background=70007C&color=fff&size=200`;
+  )}&background=570490&color=fff&size=200`;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <AppHeader
-        title="Admin Profile"
-        avatarUrl={avatarUrl || fallbackAvatar}
-        onProfilePress={() => { }}
-        showNotificationIcon={false}
-      />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+
+      {/* Top Header Bar */}
+      <View style={styles.headerBar}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Admin Profile</Text>
+        <View style={{ width: 40 }} />
+      </View>
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Admin Header Banner */}
-          <View style={styles.adminHeaderBanner}>
+          {/* Hero Profile Card */}
+          <View style={styles.heroCard}>
             <TouchableOpacity
-              style={styles.avatarDottedContainer}
+              style={styles.avatarWrap}
               onPress={handlePickImage}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
             >
-              <Image source={{ uri: avatarUrl || fallbackAvatar }} style={styles.avatarImage} />
-              <View style={styles.cameraBadgeOverlay}>
-                <Ionicons name="camera" size={16} color="#FFFFFF" />
+              <Image source={{ uri: avatarUrl || fallbackAvatar }} style={styles.avatarImg} />
+              <View style={styles.cameraPill}>
+                <Ionicons name="camera" size={13} color="#FFFFFF" />
               </View>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.changePhotoPill}
-              onPress={handlePickImage}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="images-outline" size={14} color="#FFFFFF" style={{ marginRight: 5 }} />
-              <Text style={styles.changePhotoPillText}>Choose from Gallery</Text>
-            </TouchableOpacity>
-            {avatarUrl ? (
+            <Text style={styles.adminName}>{fullName || 'Administrator'}</Text>
+
+            <View style={styles.rolePill}>
+              <Ionicons name="shield-checkmark" size={12} color={colors.primary} />
+              <Text style={styles.rolePillText}>System Administrator</Text>
+            </View>
+
+            <Text style={styles.adminEmail}>{user?.email || 'admin@kltrends.com'}</Text>
+
+            <View style={styles.photoActionsRow}>
               <TouchableOpacity
-                style={styles.removePhotoPill}
-                onPress={handleRemoveImage}
-                activeOpacity={0.8}
+                style={styles.photoActionBtn}
+                onPress={handlePickImage}
+                activeOpacity={0.7}
               >
-                <Ionicons name="trash-outline" size={14} color="#FFFFFF" style={{ marginRight: 5 }} />
-                <Text style={styles.changePhotoPillText}>Remove Photo</Text>
+                <Ionicons name="image-outline" size={14} color={colors.primary} />
+                <Text style={styles.photoActionText}>
+                  {avatarUrl ? 'Change Photo' : 'Upload Photo'}
+                </Text>
               </TouchableOpacity>
-            ) : null}
 
-            <Text style={styles.adminBannerName}>{fullName || 'Administrator'}</Text>
-            {/* <View style={styles.adminRoleBadge}>
-              <Ionicons name="shield-checkmark-outline" size={14} color="#FFFFFF" style={{ marginRight: 4 }} />
-              <Text style={styles.adminRoleText}>Administrator</Text>
-            </View> */}
-            <Text style={styles.adminEmailText}>{user?.email || 'admin@kltrends.com'}</Text>
-          </View>
-
-          {/* Edit Admin Information Card */}
-          <View style={styles.card}>
-            <View style={styles.cardHeaderRow}>
-              <Ionicons name="create-outline" size={20} color="#70007C" style={{ marginRight: 8 }} />
-              <Text style={styles.sectionHeaderTitle}>Edit Admin Details</Text>
-            </View>
-
-            {/* Admin Name Input */}
-            <Text style={styles.fieldLabel}>
-              Admin Name <Text style={styles.requiredAsterisk}>*</Text>
-            </Text>
-            <View style={styles.inputWrapper}>
-              <Ionicons name="person-outline" size={18} color="#70007C" style={{ marginRight: 10 }} />
-              <TextInput
-                style={styles.input}
-                value={fullName}
-                onChangeText={setFullName}
-                placeholder="Enter admin full name"
-                placeholderTextColor="#9CA3AF"
-              />
-            </View>
-
-            {/* Profile Photo Gallery Action Button */}
-            <TouchableOpacity
-              style={styles.galleryChooseBtn}
-              onPress={handlePickImage}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="images-outline" size={18} color="#70007C" style={{ marginRight: 8 }} />
-              <Text style={styles.galleryChooseBtnText}>
-                {avatarUrl ? 'Change Photo from Gallery' : 'Upload Photo from Gallery'}
-              </Text>
-            </TouchableOpacity>
-            {avatarUrl ? (
-              <TouchableOpacity
-                style={styles.removePhotoBtn}
-                onPress={handleRemoveImage}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="trash-outline" size={18} color={colors.error} style={{ marginRight: 8 }} />
-                <Text style={styles.removePhotoBtnText}>Remove Profile Photo</Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-
-          {/* Account Information Card (Read-only reference) */}
-          <View style={styles.card}>
-            <View style={styles.cardHeaderRow}>
-              <Ionicons name="information-circle-outline" size={20} color="#70007C" style={{ marginRight: 8 }} />
-              <Text style={styles.sectionHeaderTitle}>System Info</Text>
-            </View>
-
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Account Role</Text>
-              <Text style={styles.infoValue}>System Administrator</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Corporate Email</Text>
-              <Text style={styles.infoValue}>{user?.email || 'admin@kltrends.com'}</Text>
-            </View>
-          </View>
-
-          {/* Save Button Container */}
-          <View style={styles.saveBtnContainer}>
-            <TouchableOpacity
-              style={styles.saveBtn}
-              onPress={handleSaveProfile}
-              disabled={saving}
-              activeOpacity={0.85}
-            >
-              {saving ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
+              {avatarUrl ? (
                 <>
-                  <Ionicons name="checkmark-circle-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-                  <Text style={styles.saveBtnText}>Update Admin Profile</Text>
+                  <Text style={styles.photoActionDot}>·</Text>
+                  <TouchableOpacity
+                    style={styles.photoActionBtn}
+                    onPress={handleRemoveImage}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="trash-outline" size={14} color={colors.error} />
+                    <Text style={[styles.photoActionText, { color: colors.error }]}>Remove</Text>
+                  </TouchableOpacity>
                 </>
-              )}
+              ) : null}
+            </View>
+          </View>
+
+          {/* Account Information Section */}
+          <Text style={styles.sectionLabel}>ACCOUNT DETAILS</Text>
+          <View style={styles.card}>
+            {/* Full Name Input */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Full Name</Text>
+              <View style={styles.inputRow}>
+                <Ionicons name="person-outline" size={17} color={colors.primary} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.textInput}
+                  value={fullName}
+                  onChangeText={setFullName}
+                  placeholder="Enter administrator name"
+                  placeholderTextColor={colors.textMuted}
+                />
+              </View>
+            </View>
+
+            <View style={styles.cardDivider} />
+
+            {/* Work Email (Read-only) */}
+            <View style={styles.readOnlyRow}>
+              <View style={styles.readOnlyIconWrap}>
+                <Ionicons name="mail-outline" size={16} color={colors.textSecondary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.readOnlyLabel}>Corporate Email</Text>
+                <Text style={styles.readOnlyValue}>{user?.email || 'admin@kltrends.com'}</Text>
+              </View>
+              <View style={styles.verifiedBadge}>
+                <Ionicons name="checkmark-circle" size={13} color={colors.success} />
+                <Text style={styles.verifiedBadgeText}>Verified</Text>
+              </View>
+            </View>
+
+            <View style={styles.cardDivider} />
+
+            {/* Access Role */}
+            <View style={styles.readOnlyRow}>
+              <View style={styles.readOnlyIconWrap}>
+                <Ionicons name="key-outline" size={16} color={colors.textSecondary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.readOnlyLabel}>Access Level</Text>
+                <Text style={styles.readOnlyValue}>Full Administrator Access</Text>
+              </View>
+              <View style={[styles.verifiedBadge, { backgroundColor: colors.primarySoft }]}>
+                <Ionicons name="lock-closed" size={11} color={colors.primary} />
+                <Text style={[styles.verifiedBadgeText, { color: colors.primary }]}>Active</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Quick Shortcuts Section */}
+          <Text style={styles.sectionLabel}>QUICK SHORTCUTS</Text>
+          <View style={styles.card}>
+            <TouchableOpacity
+              style={styles.shortcutRow}
+              onPress={() => navigation.navigate('AdminReportDownload')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.shortcutIconWrap, { backgroundColor: '#FFFBEB' }]}>
+                <Ionicons name="download-outline" size={18} color="#D97706" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.shortcutTitle}>Export Reports</Text>
+                <Text style={styles.shortcutDesc}>Download PDF and Excel summaries</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+            </TouchableOpacity>
+
+            <View style={styles.cardDivider} />
+
+            <TouchableOpacity
+              style={styles.shortcutRow}
+              onPress={() => navigation.navigate('AdminDashboard')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.shortcutIconWrap, { backgroundColor: colors.primarySoft }]}>
+                <Ionicons name="grid-outline" size={18} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.shortcutTitle}>Dashboard & Attendance</Text>
+                <Text style={styles.shortcutDesc}>Live staff stats and departments</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.signOutButton} onPress={handleLogout} activeOpacity={0.75}>
-            <Ionicons name="log-out-outline" size={18} color={colors.error} />
-            <Text style={styles.signOutText}>Sign Out</Text>
+          {/* Save Profile Button */}
+          <TouchableOpacity
+            style={[
+              styles.saveBtn,
+              !hasChanges && styles.saveBtnDisabled,
+            ]}
+            onPress={handleSaveProfile}
+            disabled={saving || !hasChanges}
+            activeOpacity={0.85}
+          >
+            {saving ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <>
+                <Ionicons name="checkmark-circle-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                <Text style={styles.saveBtnText}>
+                  {hasChanges ? 'Save Changes' : 'Saved'}
+                </Text>
+              </>
+            )}
           </TouchableOpacity>
+
+          {/* Sign Out Button */}
+          <TouchableOpacity
+            style={styles.signOutBtn}
+            onPress={handleLogout}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="log-out-outline" size={16} color={colors.error} />
+            <Text style={styles.signOutText}>Sign Out of Admin Account</Text>
+          </TouchableOpacity>
+
+          <View style={{ height: 24 }} />
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -291,229 +347,296 @@ export const AdminProfileScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F6FA',
+    backgroundColor: colors.background,
+  },
+  headerBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'android' ? 14 : 8,
+    paddingBottom: 12,
+    backgroundColor: colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+  },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    letterSpacing: -0.3,
   },
   scrollContent: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-    paddingBottom: spacing.xxl,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 24,
   },
-  adminHeaderBanner: {
-    backgroundColor: colors.primaryDark,
-    borderRadius: borderRadius.xl,
-    padding: spacing.xl,
+
+  // Hero Card
+  heroCard: {
+    backgroundColor: colors.card,
+    borderRadius: 22,
+    paddingVertical: 24,
+    paddingHorizontal: 16,
     alignItems: 'center',
-    marginBottom: spacing.lg,
-    shadowColor: colors.primaryDark,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 4,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  avatarDottedContainer: {
-    width: 104,
-    height: 104,
-    borderRadius: 52,
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
+  avatarWrap: {
     position: 'relative',
-    marginBottom: spacing.xs,
+    marginBottom: 12,
   },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 52,
+  avatarImg: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: colors.primarySoft,
+    borderWidth: 2.5,
+    borderColor: colors.borderPurple,
   },
-  cameraBadgeOverlay: {
+  cameraPill: {
     position: 'absolute',
     bottom: 0,
     right: 0,
     backgroundColor: colors.primary,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: '#FFFFFF',
   },
-  changePhotoPill: {
+  adminName: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    letterSpacing: -0.4,
+  },
+  rolePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.22)',
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.35)',
-    marginBottom: spacing.sm,
+    gap: 4,
+    backgroundColor: colors.primarySoft,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 14,
+    marginTop: 6,
   },
-  changePhotoPillText: {
+  rolePillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  adminEmail: {
+    fontSize: 13,
+    color: colors.textMuted,
+    marginTop: 6,
+    fontWeight: '500',
+  },
+  photoActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 14,
+    gap: 8,
+  },
+  photoActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  photoActionText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.primary,
   },
-  removePhotoPill: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(220, 38, 38, 0.75)',
-    paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.35)', marginBottom: spacing.sm,
-  },
-  adminBannerName: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginBottom: 4,
-  },
-  adminRoleBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: spacing.md,
-    paddingVertical: 4,
-    borderRadius: borderRadius.xl,
-    marginBottom: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  adminRoleText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
-  },
-  adminEmailText: {
-    fontSize: 13,
+  photoActionDot: {
     color: colors.borderPurple,
-    fontWeight: '500',
+    fontSize: 14,
+  },
+
+  // Section Labels & Cards
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: colors.textMuted,
+    letterSpacing: 0.7,
+    marginBottom: 8,
+    marginLeft: 4,
   },
   card: {
     backgroundColor: colors.card,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: colors.borderPurple,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1,
   },
-  cardHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.primarySoft,
-    paddingBottom: spacing.xs + 2,
+  cardDivider: {
+    height: 1,
+    backgroundColor: colors.borderLight,
+    marginVertical: 12,
   },
-  sectionHeaderTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: colors.primaryDark,
+
+  // Form Inputs
+  inputGroup: {
+    gap: 6,
   },
-  fieldLabel: {
-    fontSize: 13,
+  inputLabel: {
+    fontSize: 11,
     fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: 6,
-    marginTop: spacing.xs,
-  },
-  requiredAsterisk: {
-    color: colors.primary,
-  },
-  inputWrapper: {
-    backgroundColor: colors.primaryTint,
-    borderWidth: 1.5,
-    borderColor: colors.borderPurple,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.md,
-    minHeight: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: colors.textPrimary,
-    fontWeight: '600',
-    paddingVertical: Platform.OS === 'ios' ? spacing.sm + 2 : spacing.xs,
-  },
-  galleryChooseBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primarySoft,
-    paddingVertical: spacing.md - 2,
-    borderRadius: borderRadius.md,
-    borderWidth: 1.5,
-    borderColor: colors.borderPurple,
-  },
-  galleryChooseBtnText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: colors.primary,
-  },
-  removePhotoBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: spacing.sm,
-    paddingVertical: spacing.md - 2, borderRadius: borderRadius.md, borderWidth: 1.5,
-    borderColor: colors.errorLight, backgroundColor: colors.errorLight,
-  },
-  removePhotoBtnText: { fontSize: 14, fontWeight: '800', color: colors.error },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.sm + 2,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.primarySoft,
-  },
-  infoLabel: {
-    fontSize: 13,
-    fontWeight: '600',
     color: colors.textSecondary,
   },
-  infoValue: {
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primaryTint,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.borderPurple,
+    paddingHorizontal: 12,
+    height: 46,
+  },
+  inputIcon: {
+    marginRight: 8,
+  },
+  textInput: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.textPrimary,
+    fontWeight: '600',
+    paddingVertical: 0,
+  },
+
+  // Read-only rows
+  readOnlyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  readOnlyIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: colors.borderLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  readOnlyLabel: {
+    fontSize: 11,
+    color: colors.textMuted,
+    fontWeight: '500',
+  },
+  readOnlyValue: {
+    fontSize: 13,
+    color: colors.textPrimary,
+    fontWeight: '700',
+    marginTop: 1,
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.successLight,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  verifiedBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.success,
+  },
+
+  // Shortcuts
+  shortcutRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  shortcutIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shortcutTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: colors.primary,
+    color: colors.textPrimary,
   },
-  saveBtnContainer: {
-    marginTop: spacing.sm,
+  shortcutDesc: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 1,
   },
+
+  // Save Button
   saveBtn: {
     backgroundColor: colors.primary,
     borderRadius: 16,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
+    height: 50,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 12,
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  saveBtnDisabled: {
+    backgroundColor: colors.borderPurple,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   saveBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '800',
   },
-  signOutButton: {
+
+  // Sign out Button
+  signOutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.xs,
-    marginTop: spacing.xl,
-    paddingVertical: spacing.md,
+    gap: 6,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: colors.errorLight,
     borderWidth: 1,
-    borderColor: colors.error,
-    borderRadius: borderRadius.md,
+    borderColor: '#FECACA',
   },
   signOutText: {
+    fontSize: 13,
+    fontWeight: '700',
     color: colors.error,
-    fontSize: 15,
-    fontWeight: '800',
   },
 });

@@ -283,7 +283,14 @@ export const AttendanceScreen: React.FC<Props> = ({ navigation }) => {
       );
       fetchAttendanceData();
     } else {
-      Alert.alert('Check-Out Error', res.error || 'Failed to check out. Please try again.');
+      const errStr = (res.error || '').toLowerCase();
+      if (errStr.includes('reason for leaving early') || errStr.includes('select a reason')) {
+        setSelectedPreset('');
+        setCustomReasonText('');
+        setEarlyCheckoutModalVisible(true);
+      } else {
+        Alert.alert('Check-Out Error', res.error || 'Failed to check out. Please try again.');
+      }
     }
   };
 

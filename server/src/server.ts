@@ -4,6 +4,7 @@ import app from './app.js';
 import { connectDB } from './config/db.js';
 import { assertJwtConfiguration } from './utils/jwt.js';
 import { ensureConfiguredAdmin } from './services/adminAccountService.js';
+import { seedEmployeeReportsIfEmpty } from './services/analyticsService.js';
 
 const PORT = Number(process.env.PORT) || 5000;
 
@@ -13,6 +14,7 @@ const startServer = async (): Promise<void> => {
     // Connect to MySQL
     await connectDB();
     await ensureConfiguredAdmin();
+    await seedEmployeeReportsIfEmpty();
 
     // Start Express server only after MySQL connection succeeds
     app.listen(PORT, '0.0.0.0', () => {

@@ -25,8 +25,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'AddDailyExpense'>;
 
 const CATEGORY_OPTIONS = [
   { id: 'daily_expense', label: 'Daily Expense', icon: 'wallet-outline', color: '#6366F1' },
-  { id: 'post_office_kltrends', label: 'Post Office Recharge - KLTrends', icon: 'mail-outline', color: '#7E22CE' },
-  { id: 'post_office_klindia', label: 'Post Office Recharge - KLIndia', icon: 'globe-outline', color: '#0369A1' },
+  { id: 'post_office_kltrends', label: 'Post Office - KLTrends', icon: 'mail-outline', color: '#7E22CE' },
+  { id: 'post_office_klindia', label: 'Post Office - KLIndia', icon: 'globe-outline', color: '#0369A1' },
   { id: 'return_amount', label: 'Return Amount', icon: 'arrow-undo-outline', color: '#DC2626' },
   { id: 'fuel', label: 'Fuel', icon: 'car-outline', color: '#D97706' },
   { id: 'custom', label: 'Custom', icon: 'create-outline', color: '#059669' },
@@ -62,25 +62,21 @@ export const AddDailyExpenseScreen: React.FC<Props> = ({ navigation }) => {
   }
 
   const handleSave = async () => {
-    // 1. Date validation
     if (!/^\d{2}-\d{2}-\d{4}$/.test(date)) {
       Alert.alert('Invalid Date', 'Please enter date in DD-MM-YYYY format.');
       return;
     }
 
-    // 2. Category validation
     if (!category) {
       Alert.alert('Missing Category', 'Please select an expense category.');
       return;
     }
 
-    // 3. Custom category name validation
     if (category === 'custom' && !customCategoryName.trim()) {
       Alert.alert('Missing Custom Name', 'Custom Expense Name is required when Custom category is selected.');
       return;
     }
 
-    // 4. Amount validation
     const parsedAmount = parseFloat(amount.trim());
     if (!amount.trim() || isNaN(parsedAmount) || parsedAmount <= 0) {
       Alert.alert(
@@ -134,7 +130,7 @@ export const AddDailyExpenseScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <AppHeader
-        title="Add Daily Expense"
+        title="Add Expense"
         showLogo={false}
         showBackButton={true}
         onBackPress={() => navigation.goBack()}
@@ -150,28 +146,13 @@ export const AddDailyExpenseScreen: React.FC<Props> = ({ navigation }) => {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Banner */}
-          <View style={styles.banner}>
-            <View style={styles.bannerIconBox}>
-              <Ionicons name="cash-outline" size={24} color={colors.primary} />
-            </View>
-            <View style={styles.bannerTextBox}>
-              <Text style={styles.bannerTitle}>Record Department Expense</Text>
-              <Text style={styles.bannerSub}>
-                Fuel, Post Office recharges, customer returns, or custom expenses
-              </Text>
-            </View>
-          </View>
-
           {/* Form Card */}
           <View style={styles.card}>
-            {/* Date Input */}
+            {/* Date */}
             <View style={styles.field}>
-              <Text style={styles.label}>
-                Date <Text style={styles.requiredStar}>*</Text>
-              </Text>
+              <Text style={styles.label}>Date</Text>
               <View style={styles.inputWrap}>
-                <Ionicons name="calendar-outline" size={19} color={colors.primary} />
+                <Ionicons name="calendar-outline" size={18} color={colors.primary} />
                 <TextInput
                   style={styles.input}
                   value={date}
@@ -182,15 +163,11 @@ export const AddDailyExpenseScreen: React.FC<Props> = ({ navigation }) => {
                   maxLength={10}
                 />
               </View>
-              <Text style={styles.fieldHint}>Format: DD-MM-YYYY</Text>
             </View>
 
-            {/* Category Selector */}
+            {/* Category */}
             <View style={styles.field}>
-              <Text style={styles.label}>
-                Expense Category <Text style={styles.requiredStar}>*</Text>
-              </Text>
-
+              <Text style={styles.label}>Category</Text>
               <View style={styles.categoriesGrid}>
                 {CATEGORY_OPTIONS.map((item) => {
                   const isSelected = category === item.id;
@@ -207,12 +184,12 @@ export const AddDailyExpenseScreen: React.FC<Props> = ({ navigation }) => {
                       <View
                         style={[
                           styles.categoryTileIcon,
-                          { backgroundColor: isSelected ? colors.primary : colors.surface },
+                          { backgroundColor: isSelected ? colors.primary : item.color + '15' },
                         ]}
                       >
                         <Ionicons
                           name={item.icon as any}
-                          size={18}
+                          size={16}
                           color={isSelected ? '#FFFFFF' : item.color}
                         />
                       </View>
@@ -221,37 +198,27 @@ export const AddDailyExpenseScreen: React.FC<Props> = ({ navigation }) => {
                           styles.categoryTileLabel,
                           isSelected && styles.categoryTileLabelSelected,
                         ]}
-                        numberOfLines={2}
+                        numberOfLines={1}
                       >
                         {item.label}
                       </Text>
-                      <View
-                        style={[
-                          styles.categoryRadio,
-                          isSelected && styles.categoryRadioSelected,
-                        ]}
-                      >
-                        {isSelected && <View style={styles.categoryRadioDot} />}
-                      </View>
                     </TouchableOpacity>
                   );
                 })}
               </View>
             </View>
 
-            {/* Conditional Custom Name Field */}
+            {/* Custom Name */}
             {category === 'custom' && (
-              <View style={[styles.field, styles.customFieldBox]}>
-                <Text style={styles.label}>
-                  Custom Expense Name <Text style={styles.requiredStar}>*</Text>
-                </Text>
+              <View style={styles.field}>
+                <Text style={styles.label}>Custom Name</Text>
                 <View style={styles.inputWrap}>
-                  <Ionicons name="pencil-outline" size={19} color={colors.primary} />
+                  <Ionicons name="pencil-outline" size={18} color={colors.primary} />
                   <TextInput
                     style={styles.input}
                     value={customCategoryName}
                     onChangeText={setCustomCategoryName}
-                    placeholder="e.g. Office Supplies, Maintenance, etc."
+                    placeholder="e.g. Office Supplies"
                     placeholderTextColor={colors.textMuted}
                   />
                   {customCategoryName.length > 0 && (
@@ -260,15 +227,12 @@ export const AddDailyExpenseScreen: React.FC<Props> = ({ navigation }) => {
                     </TouchableOpacity>
                   )}
                 </View>
-                <Text style={styles.fieldHint}>Specify the name for this custom expense</Text>
               </View>
             )}
 
-            {/* Amount Field */}
+            {/* Amount */}
             <View style={styles.field}>
-              <Text style={styles.label}>
-                Amount <Text style={styles.requiredStar}>*</Text>
-              </Text>
+              <Text style={styles.label}>Amount</Text>
               <View style={styles.inputWrap}>
                 <Text style={styles.currencyPrefix}>₹</Text>
                 <TextInput
@@ -285,18 +249,17 @@ export const AddDailyExpenseScreen: React.FC<Props> = ({ navigation }) => {
                   </TouchableOpacity>
                 )}
               </View>
-              <Text style={styles.fieldHint}>Must be a positive amount greater than ₹0</Text>
             </View>
 
-            {/* Description Field */}
+            {/* Description */}
             <View style={styles.field}>
-              <Text style={styles.label}>Description (Optional)</Text>
+              <Text style={styles.label}>Description</Text>
               <View style={[styles.inputWrap, styles.textAreaWrap]}>
                 <TextInput
                   style={[styles.input, styles.textArea]}
                   value={description}
                   onChangeText={setDescription}
-                  placeholder="e.g. Speed post dispatch for online batch, Diesel for vehicle, etc."
+                  placeholder="Optional notes..."
                   placeholderTextColor={colors.textMuted}
                   multiline
                   numberOfLines={3}
@@ -305,7 +268,7 @@ export const AddDailyExpenseScreen: React.FC<Props> = ({ navigation }) => {
               </View>
             </View>
 
-            {/* Save Button */}
+            {/* Save */}
             <TouchableOpacity
               style={[styles.submitButton, saving && styles.submitButtonDisabled]}
               onPress={handleSave}
@@ -340,44 +303,6 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     paddingBottom: spacing.xxl,
   },
-  banner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.cardBackground,
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
-    marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  bannerIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.primarySoft,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
-  },
-  bannerTextBox: {
-    flex: 1,
-  },
-  bannerTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: 2,
-  },
-  bannerSub: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    lineHeight: 16,
-  },
   card: {
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.lg,
@@ -391,29 +316,13 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   field: {
-    marginBottom: spacing.lg,
-  },
-  customFieldBox: {
-    backgroundColor: colors.primarySoft,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.primaryLight,
+    marginBottom: spacing.md,
   },
   label: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  },
-  requiredStar: {
-    color: colors.error,
-    fontWeight: '700',
-  },
-  fieldHint: {
-    fontSize: 11,
-    color: colors.textMuted,
-    marginTop: 4,
+    color: colors.textSecondary,
+    marginBottom: 6,
   },
   inputWrap: {
     flexDirection: 'row',
@@ -423,7 +332,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: borderRadius.md,
     paddingHorizontal: spacing.sm + 2,
-    height: 48,
+    height: 46,
   },
   input: {
     flex: 1,
@@ -433,17 +342,16 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   currencyPrefix: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
     color: colors.primary,
-    marginLeft: 2,
   },
   amountInput: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
   },
   textAreaWrap: {
-    height: 85,
+    height: 80,
     alignItems: 'flex-start',
     paddingVertical: spacing.xs + 2,
   },
@@ -452,7 +360,9 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   categoriesGrid: {
-    marginTop: 4,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
   },
   categoryTile: {
     flexDirection: 'row',
@@ -461,24 +371,25 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.border,
     borderRadius: borderRadius.md,
-    padding: spacing.sm + 2,
-    marginBottom: spacing.xs + 2,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    width: '48%',
   },
   categoryTileSelected: {
     borderColor: colors.primary,
     backgroundColor: colors.primarySoft,
   },
   categoryTileIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: spacing.sm,
+    marginRight: 8,
   },
   categoryTileLabel: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: colors.textPrimary,
   },
@@ -486,33 +397,14 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '700',
   },
-  categoryRadio: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 2,
-    borderColor: colors.textMuted,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: spacing.xs,
-  },
-  categoryRadioSelected: {
-    borderColor: colors.primary,
-  },
-  categoryRadioDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.primary,
-  },
   submitButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.primary,
     borderRadius: borderRadius.md,
-    height: 50,
-    marginTop: spacing.sm,
+    height: 48,
+    marginTop: spacing.xs,
     shadowColor: colors.primary,
     shadowOpacity: 0.3,
     shadowOffset: { width: 0, height: 4 },
@@ -524,7 +416,7 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     marginLeft: spacing.xs,
   },

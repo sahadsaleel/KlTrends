@@ -2,13 +2,16 @@ import { Response } from 'express';
 import { AuthenticatedRequest } from '../types/index.js';
 import { Attendance } from '../models/Attendance.js';
 import { uploadAttendanceSelfie } from '../services/cloudinaryService.js';
+import {
+  formatISTDateString,
+  formatISTTimeString,
+  isEarlyCheckoutIST,
+  isLateCheckInIST,
+} from '../utils/timeUtils.js';
 
-// Helper function to format Date object into YYYY-MM-DD
+// Helper function to format Date object into YYYY-MM-DD in IST
 const formatDateString = (date: Date): string => {
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const dd = String(date.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
+  return formatISTDateString(date);
 };
 
 /**
@@ -27,7 +30,7 @@ export const checkIn = async (req: AuthenticatedRequest, res: Response): Promise
     const { selfieImage, location, notes, lateCheckInReason } = req.body;
 
     const now = new Date();
-    const todayStr = formatDateString(now);
+    const todayStr = formatISTDateString(now);
 
     // Check if user already checked in today
     const existingAttendance = await Attendance.findByUserAndDate(userId, todayStr);
@@ -35,16 +38,14 @@ export const checkIn = async (req: AuthenticatedRequest, res: Response): Promise
     if (existingAttendance && existingAttendance.checkInTime) {
       res.status(400).json({
         success: false,
-        error: `Already checked in today at ${new Date(existingAttendance.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+        error: `Already checked in today at ${formatISTTimeString(new Date(existingAttendance.checkInTime))}`,
         data: existingAttendance,
       });
       return;
     }
 
-    // Determine if late (shift starts at 10:00 AM)
-    const shiftStart = new Date(now);
-    shiftStart.setHours(10, 0, 0, 0);
-    const isLate = now > shiftStart;
+    // Determine if late (shift starts at 10:00 AM IST)
+    const isLate = isLateCheckInIST(now);
 
     const lateReason = typeof lateCheckInReason === 'string' ? lateCheckInReason.trim() : '';
     if (isLate && !lateReason) {
@@ -117,9 +118,17 @@ export const checkOut = async (req: AuthenticatedRequest, res: Response): Promis
     }
 
     const now = new Date();
-    const todayStr = formatDateString(now);
+    const todayStr = formatISTDateString(now);
 
     let attendance = await Attendance.findByUserAndDate(userId, todayStr);
+
+    // If not found for today's date, also check for any currently open attendance
+    if (!attendance || !attendance.checkInTime || attendance.checkOutTime) {
+      const openAttendance = await Attendance.findLatestOpenByUser(userId);
+      if (openAttendance) {
+        attendance = openAttendance;
+      }
+    }
 
     if (!attendance || !attendance.checkInTime) {
       res.status(400).json({
@@ -132,7 +141,7 @@ export const checkOut = async (req: AuthenticatedRequest, res: Response): Promis
     if (attendance.checkOutTime) {
       res.status(400).json({
         success: false,
-        error: `Already checked out today at ${new Date(attendance.checkOutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+        error: `Already checked out today at ${formatISTTimeString(new Date(attendance.checkOutTime))}`,
         data: attendance,
       });
       return;
@@ -151,29 +160,25 @@ export const checkOut = async (req: AuthenticatedRequest, res: Response): Promis
           ? reason.trim()
           : '';
 
-    // Check if check-out is before 5:30 PM
-    const shiftEndHour = 17;
-    const shiftEndMinute = 30;
-
-    const isEarly =
-      now.getHours() < shiftEndHour ||
-      (now.getHours() === shiftEndHour &&
-        now.getMinutes() < shiftEndMinute);
+    // Check if check-out is before 5:30 PM (17:30) IST
+    const isEarly = isEarlyCheckoutIST(now);
 
     // Require a reason for early checkout
     if (isEarly && !checkoutReason) {
       res.status(400).json({
         success: false,
+        error: 'Please select a reason for leaving early.',
         message: 'Please select a reason for leaving early.',
       });
 
       return;
     }
 
-    // Save the actual selected reason
+    // Save the actual selected reason using the record's date
+    const targetDate = attendance.date || todayStr;
     const updatedAttendance = await Attendance.checkOutIfOpen(
       userId,
-      todayStr,
+      targetDate,
       now,
       workDurationMinutes,
       isEarly ? checkoutReason : null,
@@ -211,10 +216,13 @@ export const getTodayStatus = async (req: AuthenticatedRequest, res: Response): 
     }
 
     const now = new Date();
-    const todayStr = formatDateString(now);
+    const todayStr = formatISTDateString(now);
 
-    // Strictly check attendance for TODAY's date
-    const attendance = await Attendance.findByUserAndDate(userId, todayStr);
+    // Strictly check attendance for TODAY's date, or any open attendance
+    let attendance = await Attendance.findByUserAndDate(userId, todayStr);
+    if (!attendance) {
+      attendance = await Attendance.findLatestOpenByUser(userId);
+    }
 
     res.status(200).json({
       success: true,
@@ -310,10 +318,10 @@ export const getMonthlyAttendance = async (req: AuthenticatedRequest, res: Respo
       const dayName = dayNames[recDate.getDay()];
 
       const inTimeFormatted = rec.checkInTime
-        ? new Date(rec.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        ? formatISTTimeString(new Date(rec.checkInTime))
         : '--';
       const outTimeFormatted = rec.checkOutTime
-        ? new Date(rec.checkOutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        ? formatISTTimeString(new Date(rec.checkOutTime))
         : (rec.checkInTime ? 'Active' : '--');
 
       const mins = rec.workDurationMinutes || 0;

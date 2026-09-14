@@ -5,13 +5,16 @@ import { Attendance } from '../models/Attendance.js';
 import { Report } from '../models/Report.js';
 import { uploadProfileImage } from '../services/cloudinaryService.js';
 import { normalizeDepartment, VALID_DEPARTMENTS } from '../validators/index.js';
+import { getDashboardTrendAnalytics } from '../services/analyticsService.js';
+import {
+  formatISTDateString,
+  formatISTTimeString,
+  isEarlyCheckoutIST,
+} from '../utils/timeUtils.js';
 
-// Helper: format YYYY-MM-DD
+// Helper: format YYYY-MM-DD in IST
 const formatDateString = (date: Date): string => {
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const dd = String(date.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
+  return formatISTDateString(date);
 };
 
 /**
@@ -88,11 +91,10 @@ export const getDashboardStats = async (req: AuthenticatedRequest, res: Response
       };
     });
 
-    // Find early checkouts today (checked out before 5:30 PM (17:30) or has earlyCheckoutReason)
+    // Find early checkouts today (checked out before 5:30 PM (17:30) IST or has earlyCheckoutReason)
     const earlyAttendances = todayAttendance.filter((a) => {
       if (!a.checkOutTime) return false;
-      const outDate = new Date(a.checkOutTime);
-      const isBefore530 = outDate.getHours() < 17 || (outDate.getHours() === 17 && outDate.getMinutes() < 30);
+      const isBefore530 = isEarlyCheckoutIST(new Date(a.checkOutTime));
       return isBefore530 || Boolean(a.earlyCheckoutReason);
     });
 
@@ -113,11 +115,11 @@ export const getDashboardStats = async (req: AuthenticatedRequest, res: Response
           department: user?.department || 'General',
           avatarUrl: user?.avatarUrl,
           checkInTime: checkInDate
-            ? checkInDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            ? formatISTTimeString(checkInDate)
             : null,
           checkOutTime: a.checkOutTime ? a.checkOutTime.toISOString() : '',
           checkOutTimeFormatted: checkOutDate
-            ? checkOutDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            ? formatISTTimeString(checkOutDate)
             : '--',
           reason: a.earlyCheckoutReason || 'Left before 5:30 PM (No specific reason provided)',
           workDurationMinutes: a.workDurationMinutes,
@@ -154,6 +156,9 @@ export const getDashboardStats = async (req: AuthenticatedRequest, res: Response
       'July', 'August', 'September', 'October', 'November', 'December',
     ];
 
+    // Compute dynamic real-time employee report trends for Day, Week, Month
+    const analytics = await getDashboardTrendAnalytics();
+
     res.status(200).json({
       success: true,
       data: {
@@ -171,11 +176,27 @@ export const getDashboardStats = async (req: AuthenticatedRequest, res: Response
         topPerformers,
         earlyCheckouts,
         lateCheckIns,
+        analytics,
       },
     });
   } catch (error: any) {
     console.error('Error fetching dashboard stats:', error);
     res.status(500).json({ success: false, error: error.message || 'Error fetching dashboard stats' });
+  }
+};
+
+/**
+ * @desc    Get dedicated trend analytics for Day, Week, Month from dynamic employee reports
+ * @route   GET /api/admin/dashboard/analytics
+ * @access  Private (Admin only)
+ */
+export const getDashboardAnalytics = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const analytics = await getDashboardTrendAnalytics();
+    res.status(200).json({ success: true, data: analytics });
+  } catch (error: any) {
+    console.error('Error fetching dashboard analytics:', error);
+    res.status(500).json({ success: false, error: error.message || 'Error fetching analytics' });
   }
 };
 

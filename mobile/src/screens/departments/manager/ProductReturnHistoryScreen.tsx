@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -22,7 +22,6 @@ import { managerApi, ProductReturn, ProductReturnSummary } from '../../../api/ma
 type Props = NativeStackScreenProps<RootStackParamList, 'ProductReturnHistory'>;
 
 type SourceFilter = 'all' | 'kltrends' | 'klindia';
-type PeriodFilter = 'all' | 'today' | 'month';
 
 const formatDisplayDate = (apiDate: string) => {
   if (!apiDate) return '';
@@ -33,26 +32,12 @@ const formatDisplayDate = (apiDate: string) => {
   return apiDate;
 };
 
-const getTodayApiDate = () => new Date().toISOString().slice(0, 10);
-
-const getMonthRange = () => {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
-  return {
-    start: `${year}-${month}-01`,
-    end: `${year}-${month}-${String(lastDay).padStart(2, '0')}`,
-  };
-};
-
 export const ProductReturnHistoryScreen: React.FC<Props> = ({ navigation }) => {
   const isAuthorized = useDepartmentGuard('manager', navigation);
 
   const [returns, setReturns] = useState<ProductReturn[]>([]);
   const [summary, setSummary] = useState<ProductReturnSummary | null>(null);
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
-  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all');
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
@@ -64,14 +49,6 @@ export const ProductReturnHistoryScreen: React.FC<Props> = ({ navigation }) => {
       params.orderSource = sourceFilter;
     }
 
-    if (periodFilter === 'today') {
-      params.date = getTodayApiDate();
-    } else if (periodFilter === 'month') {
-      const { start, end } = getMonthRange();
-      params.startDate = start;
-      params.endDate = end;
-    }
-
     const res = await managerApi.getProductReturns(params);
     if (res.success && res.data) {
       setReturns(res.data.returns || []);
@@ -79,7 +56,7 @@ export const ProductReturnHistoryScreen: React.FC<Props> = ({ navigation }) => {
     }
     setLoading(false);
     setRefreshing(false);
-  }, [isAuthorized, sourceFilter, periodFilter]);
+  }, [isAuthorized, sourceFilter]);
 
   useFocusEffect(
     useCallback(() => {
@@ -99,7 +76,7 @@ export const ProductReturnHistoryScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <AppHeader
-        title="Product Return History"
+        title="Return History"
         showLogo={false}
         showBackButton={true}
         onBackPress={() => navigation.goBack()}
@@ -118,244 +95,87 @@ export const ProductReturnHistoryScreen: React.FC<Props> = ({ navigation }) => {
           />
         }
       >
-        {/* Filter Section: Order Source */}
-        <View style={styles.filterCard}>
-          <Text style={styles.filterSectionTitle}>Filter by Order Source</Text>
-          <View style={styles.filterPillsRow}>
-            <TouchableOpacity
-              style={[styles.filterPill, sourceFilter === 'all' && styles.filterPillActive]}
-              onPress={() => setSourceFilter('all')}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={[
-                  styles.filterPillText,
-                  sourceFilter === 'all' && styles.filterPillTextActive,
-                ]}
-              >
-                All Sources
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.filterPill,
-                sourceFilter === 'kltrends' && styles.filterPillActive,
-              ]}
-              onPress={() => setSourceFilter('kltrends')}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={[
-                  styles.filterPillText,
-                  sourceFilter === 'kltrends' && styles.filterPillTextActive,
-                ]}
-              >
-                KLTrends
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.filterPill,
-                sourceFilter === 'klindia' && styles.filterPillActive,
-              ]}
-              onPress={() => setSourceFilter('klindia')}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={[
-                  styles.filterPillText,
-                  sourceFilter === 'klindia' && styles.filterPillTextActive,
-                ]}
-              >
-                KLIndia
-              </Text>
-            </TouchableOpacity>
+        {/* Summary */}
+        <View style={styles.summaryRow}>
+          <View>
+            <Text style={styles.summaryCount}>{summary?.totalReturns || 0}</Text>
+            <Text style={styles.summaryLabel}>total returned</Text>
           </View>
-
-          {/* Period Filter */}
-          <Text style={[styles.filterSectionTitle, { marginTop: spacing.sm }]}>Date Range</Text>
-          <View style={styles.filterPillsRow}>
-            <TouchableOpacity
-              style={[styles.periodPill, periodFilter === 'all' && styles.periodPillActive]}
-              onPress={() => setPeriodFilter('all')}
-              activeOpacity={0.8}
-            >
-              <Ionicons
-                name="calendar-outline"
-                size={13}
-                color={periodFilter === 'all' ? '#FFFFFF' : colors.textSecondary}
-              />
-              <Text
-                style={[
-                  styles.periodPillText,
-                  periodFilter === 'all' && styles.periodPillTextActive,
-                ]}
-              >
-                All Time
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.periodPill, periodFilter === 'today' && styles.periodPillActive]}
-              onPress={() => setPeriodFilter('today')}
-              activeOpacity={0.8}
-            >
-              <Ionicons
-                name="today-outline"
-                size={13}
-                color={periodFilter === 'today' ? '#FFFFFF' : colors.textSecondary}
-              />
-              <Text
-                style={[
-                  styles.periodPillText,
-                  periodFilter === 'today' && styles.periodPillTextActive,
-                ]}
-              >
-                Today
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.periodPill, periodFilter === 'month' && styles.periodPillActive]}
-              onPress={() => setPeriodFilter('month')}
-              activeOpacity={0.8}
-            >
-              <Ionicons
-                name="time-outline"
-                size={13}
-                color={periodFilter === 'month' ? '#FFFFFF' : colors.textSecondary}
-              />
-              <Text
-                style={[
-                  styles.periodPillText,
-                  periodFilter === 'month' && styles.periodPillTextActive,
-                ]}
-              >
-                This Month
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Quick Counts Summary Banner */}
-        {summary && (
-          <View style={styles.summaryRow}>
-            <View style={[styles.summaryCard, { borderColor: '#E9D5FF' }]}>
-              <Text style={styles.summaryLabel}>Total Returned</Text>
-              <Text style={[styles.summaryNumber, { color: '#7E22CE' }]}>
-                {summary.totalReturns}
-              </Text>
-              <Text style={styles.summarySub}>items</Text>
-            </View>
-
-            <View style={[styles.summaryCard, { borderColor: '#BAE6FD' }]}>
-              <Text style={styles.summaryLabel}>KLTrends</Text>
-              <Text style={[styles.summaryNumber, { color: '#0369A1' }]}>
-                {summary.kltrendsCount}
-              </Text>
-              <Text style={styles.summarySub}>returns</Text>
-            </View>
-
-            <View style={[styles.summaryCard, { borderColor: '#BBF7D0' }]}>
-              <Text style={styles.summaryLabel}>KLIndia</Text>
-              <Text style={[styles.summaryNumber, { color: '#15803D' }]}>
-                {summary.klindiaCount}
-              </Text>
-              <Text style={styles.summarySub}>returns</Text>
-            </View>
-          </View>
-        )}
-
-        {/* Header with Add Button */}
-        <View style={styles.listHeaderRow}>
-          <Text style={styles.listSectionTitle}>
-            Returned Products ({returns.length})
-          </Text>
           <TouchableOpacity
-            style={styles.addReturnBtn}
+            style={styles.addBtn}
             onPress={() => navigation.navigate('AddProductReturn')}
             activeOpacity={0.8}
           >
             <Ionicons name="add" size={16} color="#FFFFFF" />
-            <Text style={styles.addReturnBtnText}>Add Return</Text>
+            <Text style={styles.addBtnText}>Add</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Loading State */}
+        {/* Source Filter */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterRow}
+          style={styles.filterRowContainer}
+        >
+          {(['all', 'kltrends', 'klindia'] as SourceFilter[]).map((src) => {
+            const isActive = sourceFilter === src;
+            const labels: Record<SourceFilter, string> = { all: 'All', kltrends: 'KLTrends', klindia: 'KLIndia' };
+            return (
+              <TouchableOpacity
+                key={src}
+                style={[styles.filterPill, isActive && styles.filterPillActive]}
+                onPress={() => setSourceFilter(src)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.filterPillText, isActive && styles.filterPillTextActive]}>
+                  {labels[src]}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* List */}
         {loading ? (
-          <View style={styles.loadingBox}>
-            <ActivityIndicator size="small" color={colors.primary} />
-            <Text style={styles.loadingText}>Loading product returns...</Text>
-          </View>
+          <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 24 }} />
         ) : returns.length === 0 ? (
-          /* Empty State */
           <View style={styles.emptyCard}>
-            <Ionicons name="cube-outline" size={48} color={colors.textMuted} />
-            <Text style={styles.emptyTitle}>No Product Returns Found</Text>
-            <Text style={styles.emptySub}>
-              {sourceFilter !== 'all' || periodFilter !== 'all'
-                ? 'Try adjusting your filters above.'
-                : 'Tap "+ Add Return" above to record your first product return.'}
-            </Text>
+            <Ionicons name="cube-outline" size={36} color={colors.textMuted} />
+            <Text style={styles.emptyText}>No returns found</Text>
           </View>
         ) : (
-          /* Table / Card List */
           returns.map((item) => {
             const isKLTrends = item.orderSource === 'kltrends';
             return (
               <View key={item.id} style={styles.recordCard}>
-                <View style={styles.recordHeader}>
-                  <View style={styles.recordHeaderLeft}>
+                <View style={styles.cardRow}>
+                  <View style={styles.cardLeft}>
                     <View
                       style={[
                         styles.sourceTag,
-                        {
-                          backgroundColor: isKLTrends ? '#F3E8FF' : '#E0F2FE',
-                        },
+                        { backgroundColor: isKLTrends ? '#F3E8FF' : '#E0F2FE' },
                       ]}
                     >
                       <Text
                         style={[
                           styles.sourceTagText,
-                          {
-                            color: isKLTrends ? '#7E22CE' : '#0369A1',
-                          },
+                          { color: isKLTrends ? '#7E22CE' : '#0369A1' },
                         ]}
                       >
                         {isKLTrends ? 'KLTrends' : 'KLIndia'}
                       </Text>
                     </View>
-                    <Text style={styles.recordDate}>
-                      {formatDisplayDate(item.date)}
-                    </Text>
+                    <Text style={styles.cardDate}>{formatDisplayDate(item.date)}</Text>
+                    {item.notes ? (
+                      <Text style={styles.cardNotes} numberOfLines={1}>{item.notes}</Text>
+                    ) : null}
                   </View>
-
-                  <View style={styles.qtyBadge}>
-                    <Text style={styles.qtyBadgeNum}>{item.returnQuantity}</Text>
-                    <Text style={styles.qtyBadgeLabel}>Returned</Text>
+                  <View style={styles.cardRight}>
+                    <Text style={styles.qtyNum}>{item.returnQuantity}</Text>
+                    <Text style={styles.qtyLabel}>units</Text>
                   </View>
                 </View>
-
-                {item.notes ? (
-                  <View style={styles.notesBox}>
-                    <Ionicons
-                      name="chatbubble-ellipses-outline"
-                      size={14}
-                      color={colors.textMuted}
-                    />
-                    <Text style={styles.notesText}>{item.notes}</Text>
-                  </View>
-                ) : null}
-
-                {item.employeeName && (
-                  <View style={styles.recordFooter}>
-                    <Text style={styles.recordedByText}>
-                      Recorded by: {item.employeeName}
-                    </Text>
-                  </View>
-                )}
               </View>
             );
           })
@@ -374,30 +194,50 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     paddingBottom: spacing.xxl,
   },
-  filterCard: {
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     backgroundColor: colors.cardBackground,
-    padding: spacing.md,
     borderRadius: borderRadius.lg,
-    marginBottom: spacing.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
     borderWidth: 1,
     borderColor: colors.borderLight,
   },
-  filterSectionTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: spacing.xs,
+  summaryCount: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: colors.textPrimary,
   },
-  filterPillsRow: {
+  summaryLabel: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  addBtn: {
     flexDirection: 'row',
-    gap: spacing.xs,
-    flexWrap: 'wrap',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: borderRadius.md,
+    gap: 4,
+  },
+  addBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  filterRowContainer: {
+    marginBottom: 8,
+  },
+  filterRow: {
+    gap: 6,
   },
   filterPill: {
     paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingVertical: 6,
     borderRadius: borderRadius.full,
     backgroundColor: colors.surface,
     borderWidth: 1,
@@ -406,6 +246,10 @@ const styles = StyleSheet.create({
   filterPillActive: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
+  },
+  filterPillDark: {
+    backgroundColor: colors.textPrimary,
+    borderColor: colors.textPrimary,
   },
   filterPillText: {
     fontSize: 12,
@@ -416,194 +260,68 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700',
   },
-  periodPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  periodPillActive: {
-    backgroundColor: colors.textPrimary,
-    borderColor: colors.textPrimary,
-  },
-  periodPillText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  periodPillTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-    marginBottom: spacing.md,
-  },
-  summaryCard: {
-    flex: 1,
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.md,
-    padding: spacing.sm + 2,
-    alignItems: 'center',
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  summaryLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  summaryNumber: {
-    fontSize: 18,
-    fontWeight: '800',
-    marginVertical: 2,
-  },
-  summarySub: {
-    fontSize: 10,
-    color: colors.textMuted,
-  },
-  listHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-    marginTop: spacing.xs,
-  },
-  listSectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  addReturnBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: 6,
-    borderRadius: borderRadius.md,
-  },
-  addReturnBtnText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-    marginLeft: 3,
-  },
-  loadingBox: {
-    padding: spacing.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingText: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginTop: spacing.sm,
-  },
   emptyCard: {
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.lg,
     padding: spacing.xl,
     alignItems: 'center',
-    justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.borderLight,
     marginTop: spacing.sm,
   },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginTop: spacing.md,
-  },
-  emptySub: {
-    fontSize: 13,
+  emptyText: {
+    fontSize: 14,
     color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: spacing.xs,
-    maxWidth: 240,
+    marginTop: spacing.sm,
   },
   recordCard: {
     backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     padding: spacing.md,
-    marginBottom: spacing.sm,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: colors.borderLight,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 6,
-    elevation: 1,
   },
-  recordHeader: {
+  cardRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  recordHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
+  cardLeft: {
+    flex: 1,
+    marginRight: spacing.sm,
   },
   sourceTag: {
+    alignSelf: 'flex-start',
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 2,
     borderRadius: borderRadius.sm,
+    marginBottom: 4,
   },
   sourceTagText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
   },
-  recordDate: {
-    fontSize: 13,
+  cardDate: {
+    fontSize: 12,
     fontWeight: '600',
     color: colors.textSecondary,
-    marginLeft: 4,
   },
-  qtyBadge: {
+  cardNotes: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  cardRight: {
     alignItems: 'flex-end',
   },
-  qtyBadgeNum: {
+  qtyNum: {
     fontSize: 18,
     fontWeight: '800',
     color: colors.primary,
   },
-  qtyBadgeLabel: {
+  qtyLabel: {
     fontSize: 10,
     color: colors.textMuted,
-    fontWeight: '500',
-  },
-  notesBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: colors.surface,
-    padding: spacing.sm,
-    borderRadius: borderRadius.md,
-    marginTop: spacing.sm,
-    gap: 6,
-  },
-  notesText: {
-    flex: 1,
-    fontSize: 12,
-    color: colors.textSecondary,
-    lineHeight: 16,
-  },
-  recordFooter: {
-    marginTop: spacing.xs,
-    alignItems: 'flex-end',
-  },
-  recordedByText: {
-    fontSize: 11,
-    color: colors.textMuted,
-    fontStyle: 'italic',
   },
 });

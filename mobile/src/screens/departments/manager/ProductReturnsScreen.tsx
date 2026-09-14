@@ -112,104 +112,58 @@ export const ProductReturnsScreen: React.FC<Props> = ({ navigation }) => {
           />
         }
       >
-        {/* Hero Section */}
-        <View style={styles.heroCard}>
-          <View style={styles.heroHeader}>
+        {/* Summary + Actions */}
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryRow}>
             <View>
-              <Text style={styles.heroSubtitle}>Manager Department</Text>
-              <Text style={styles.heroTitle}>Product Returns</Text>
+              <Text style={styles.summaryCount}>{summary?.totalReturns || 0}</Text>
+              <Text style={styles.summaryLabel}>total returned</Text>
             </View>
-            <View style={styles.heroIconBox}>
-              <Ionicons name="repeat-outline" size={26} color="#FFFFFF" />
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                style={styles.primaryBtn}
+                onPress={() => navigation.navigate('AddProductReturn')}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="add" size={18} color="#FFFFFF" />
+                <Text style={styles.primaryBtnText}>Add</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.secondaryBtn}
+                onPress={() => navigation.navigate('ProductReturnHistory')}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="time-outline" size={16} color={colors.primary} />
+              </TouchableOpacity>
             </View>
           </View>
-          <Text style={styles.heroDescription}>
-            Track and record product returns received across KLTrends social channels and KLIndia website orders.
-          </Text>
 
-          {/* Action Buttons */}
-          <View style={styles.actionRow}>
-            <TouchableOpacity
-              style={styles.primaryActionBtn}
-              onPress={() => navigation.navigate('AddProductReturn')}
-              activeOpacity={0.85}
-            >
-              <Ionicons name="add-circle" size={18} color="#FFFFFF" />
-              <Text style={styles.primaryActionBtnText}>Record Return</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.secondaryActionBtn}
-              onPress={() => navigation.navigate('ProductReturnHistory')}
-              activeOpacity={0.85}
-            >
-              <Ionicons name="time" size={16} color={colors.primary} />
-              <Text style={styles.secondaryActionBtnText}>View History</Text>
-            </TouchableOpacity>
-          </View>
+          {/* Source Breakdown */}
+          {summary && (
+            <View style={styles.sourceBreakdown}>
+              <View style={styles.sourceItem}>
+                <View style={[styles.sourceDot, { backgroundColor: '#7E22CE' }]} />
+                <Text style={styles.sourceText}>KLTrends</Text>
+                <Text style={styles.sourceCount}>{summary.kltrendsCount}</Text>
+              </View>
+              <View style={styles.sourceDivider} />
+              <View style={styles.sourceItem}>
+                <View style={[styles.sourceDot, { backgroundColor: '#0369A1' }]} />
+                <Text style={styles.sourceText}>KLIndia</Text>
+                <Text style={styles.sourceCount}>{summary.klindiaCount}</Text>
+              </View>
+            </View>
+          )}
         </View>
 
-        {/* Source Breakdown Cards */}
-        <Text style={styles.sectionTitle}>Order Sources</Text>
-        <View style={styles.sourceGrid}>
-          {/* KLTrends Card */}
-          <TouchableOpacity
-            style={styles.sourceCard}
-            onPress={() => navigation.navigate('ProductReturnHistory')}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.sourceCardIcon, { backgroundColor: '#F3E8FF' }]}>
-              <Ionicons name="logo-instagram" size={22} color="#7E22CE" />
-            </View>
-            <Text style={styles.sourceCardTitle}>KLTrends</Text>
-            <Text style={styles.sourceCardDesc}>Online & Instagram</Text>
-            <View style={styles.sourceStatBadge}>
-              <Text style={styles.sourceStatNumber}>
-                {summary ? summary.kltrendsCount : '0'}
-              </Text>
-              <Text style={styles.sourceStatLabel}>returned</Text>
-            </View>
-          </TouchableOpacity>
-
-          {/* KLIndia Card */}
-          <TouchableOpacity
-            style={styles.sourceCard}
-            onPress={() => navigation.navigate('ProductReturnHistory')}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.sourceCardIcon, { backgroundColor: '#E0F2FE' }]}>
-              <Ionicons name="globe-outline" size={22} color="#0369A1" />
-            </View>
-            <Text style={styles.sourceCardTitle}>KLIndia</Text>
-            <Text style={styles.sourceCardDesc}>Website Orders</Text>
-            <View style={styles.sourceStatBadge}>
-              <Text style={styles.sourceStatNumber}>
-                {summary ? summary.klindiaCount : '0'}
-              </Text>
-              <Text style={styles.sourceStatLabel}>returned</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        {/* Total Summary Bar */}
-        {summary && (
-          <View style={styles.totalBar}>
-            <View style={styles.totalBarLeft}>
-              <Ionicons name="stats-chart" size={20} color={colors.primary} />
-              <Text style={styles.totalBarLabel}>Total Returned Products</Text>
-            </View>
-            <Text style={styles.totalBarValue}>{summary.totalReturns}</Text>
-          </View>
-        )}
-
-        {/* Recent Returns Section */}
-        <View style={styles.recentHeaderRow}>
-          <Text style={styles.sectionTitle}>Recent Returns</Text>
+        {/* Recent Returns */}
+        <View style={styles.sectionRow}>
+          <Text style={styles.sectionTitle}>Recent</Text>
           <TouchableOpacity
             onPress={() => navigation.navigate('ProductReturnHistory')}
             activeOpacity={0.7}
           >
-            <Text style={styles.seeAllText}>See All ({summary?.totalRecords || 0})</Text>
+            <Text style={styles.seeAllText}>See All</Text>
           </TouchableOpacity>
         </View>
 
@@ -217,8 +171,8 @@ export const ProductReturnsScreen: React.FC<Props> = ({ navigation }) => {
           <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 20 }} />
         ) : recentReturns.length === 0 ? (
           <View style={styles.emptyCard}>
-            <Ionicons name="cube-outline" size={40} color={colors.textMuted} />
-            <Text style={styles.emptyText}>No returns recorded yet.</Text>
+            <Ionicons name="cube-outline" size={36} color={colors.textMuted} />
+            <Text style={styles.emptyText}>No returns yet</Text>
             <TouchableOpacity
               style={styles.emptyAddBtn}
               onPress={() => navigation.navigate('AddProductReturn')}
@@ -230,32 +184,32 @@ export const ProductReturnsScreen: React.FC<Props> = ({ navigation }) => {
           recentReturns.map((item) => {
             const isKLTrends = item.orderSource === 'kltrends';
             return (
-              <View key={item.id} style={styles.recentCard}>
-                <View style={styles.recentCardLeft}>
+              <View key={item.id} style={styles.recentItem}>
+                <View style={styles.recentItemLeft}>
                   <View
                     style={[
-                      styles.recentCardTag,
+                      styles.recentTag,
                       { backgroundColor: isKLTrends ? '#F3E8FF' : '#E0F2FE' },
                     ]}
                   >
                     <Text
                       style={[
-                        styles.recentCardTagText,
+                        styles.recentTagText,
                         { color: isKLTrends ? '#7E22CE' : '#0369A1' },
                       ]}
                     >
                       {isKLTrends ? 'KLTrends' : 'KLIndia'}
                     </Text>
                   </View>
-                  <Text style={styles.recentCardDate}>{formatDisplayDate(item.date)}</Text>
+                  <Text style={styles.recentDate}>{formatDisplayDate(item.date)}</Text>
                   {item.notes ? (
-                    <Text style={styles.recentCardNotes} numberOfLines={1}>
+                    <Text style={styles.recentNotes} numberOfLines={1}>
                       {item.notes}
                     </Text>
                   ) : null}
                 </View>
-                <View style={styles.recentCardRight}>
-                  <Text style={styles.recentQtyNumber}>{item.returnQuantity}</Text>
+                <View style={styles.recentItemRight}>
+                  <Text style={styles.recentQty}>{item.returnQuantity}</Text>
                   <Text style={styles.recentQtyLabel}>units</Text>
                 </View>
               </View>
@@ -278,175 +232,108 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     paddingBottom: spacing.xxl + 40,
   },
-  heroCard: {
+  summaryCard: {
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.borderLight,
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 3 },
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 6,
+    elevation: 2,
   },
-  heroHeader: {
+  summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.xs,
   },
-  heroSubtitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.primary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  heroTitle: {
-    fontSize: 22,
+  summaryCount: {
+    fontSize: 24,
     fontWeight: '800',
     color: colors.textPrimary,
   },
-  heroIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  heroDescription: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    lineHeight: 18,
-    marginVertical: spacing.sm,
+  summaryLabel: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 2,
   },
   actionRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.xs,
+    gap: 8,
   },
-  primaryActionBtn: {
-    flex: 1,
+  primaryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     backgroundColor: colors.primary,
-    paddingVertical: 12,
+    paddingVertical: 9,
+    paddingHorizontal: 14,
     borderRadius: borderRadius.md,
-    gap: 6,
+    gap: 4,
   },
-  primaryActionBtnText: {
+  primaryBtnText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
   },
-  secondaryActionBtn: {
-    flex: 1,
-    flexDirection: 'row',
+  secondaryBtn: {
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.primarySoft,
-    paddingVertical: 12,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.primaryLight,
-    gap: 6,
-  },
-  secondaryActionBtnText: {
-    color: colors.primary,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-  },
-  sourceGrid: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  sourceCard: {
-    flex: 1,
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  sourceCardIcon: {
     width: 38,
     height: 38,
     borderRadius: borderRadius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
-  sourceCardTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  sourceCardDesc: {
-    fontSize: 11,
-    color: colors.textMuted,
-    marginBottom: spacing.sm,
-  },
-  sourceStatBadge: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 4,
-  },
-  sourceStatNumber: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: colors.textPrimary,
-  },
-  sourceStatLabel: {
-    fontSize: 11,
-    color: colors.textSecondary,
-  },
-  totalBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: colors.primarySoft,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.lg,
     borderWidth: 1,
     borderColor: colors.primaryLight,
   },
-  totalBarLeft: {
+  sourceBreakdown: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
   },
-  totalBarLabel: {
-    fontSize: 14,
+  sourceItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  sourceDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  sourceText: {
+    fontSize: 12,
     fontWeight: '600',
+    color: colors.textSecondary,
+    flex: 1,
+  },
+  sourceCount: {
+    fontSize: 15,
+    fontWeight: '800',
     color: colors.textPrimary,
   },
-  totalBarValue: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: colors.primary,
+  sourceDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: colors.borderLight,
+    marginHorizontal: spacing.sm,
   },
-  recentHeaderRow: {
+  sectionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.textPrimary,
   },
   seeAllText: {
     fontSize: 13,
@@ -461,7 +348,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.borderLight,
-    marginTop: spacing.xs,
   },
   emptyText: {
     fontSize: 14,
@@ -480,46 +366,46 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
-  recentCard: {
+  recentItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.md,
     padding: spacing.md,
-    marginBottom: spacing.xs,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: colors.borderLight,
   },
-  recentCardLeft: {
+  recentItemLeft: {
     flex: 1,
   },
-  recentCardTag: {
+  recentTag: {
     alignSelf: 'flex-start',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: borderRadius.sm,
     marginBottom: 4,
   },
-  recentCardTagText: {
+  recentTagText: {
     fontSize: 11,
     fontWeight: '700',
   },
-  recentCardDate: {
+  recentDate: {
     fontSize: 12,
     fontWeight: '600',
     color: colors.textSecondary,
   },
-  recentCardNotes: {
+  recentNotes: {
     fontSize: 11,
     color: colors.textMuted,
     marginTop: 2,
   },
-  recentCardRight: {
+  recentItemRight: {
     alignItems: 'flex-end',
     marginLeft: spacing.sm,
   },
-  recentQtyNumber: {
+  recentQty: {
     fontSize: 18,
     fontWeight: '800',
     color: colors.primary,

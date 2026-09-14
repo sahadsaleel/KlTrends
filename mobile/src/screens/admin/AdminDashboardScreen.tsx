@@ -16,7 +16,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { Text } from '../../components/common/Text';
@@ -32,7 +31,9 @@ import {
   AdminEmployee,
   EmployeeSales,
   AdminReportsSummary,
+  AdminReportItem,
 } from '../../api/admin';
+import { DashboardAnalyticsChart } from '../../components/admin/DashboardAnalyticsChart';
 import { DailyExpense, managerApi, ProductReturn } from '../../api/manager';
 import { PackingListResponse } from '../../api/packaging';
 import { packagingApi } from '../../api/packaging';
@@ -61,6 +62,7 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
   const [employeeSearch, setEmployeeSearch] = useState('');
   const [salesByEmployee, setSalesByEmployee] = useState<EmployeeSales[]>([]);
   const [reportsSummary, setReportsSummary] = useState<AdminReportsSummary | null>(null);
+  const [allReports, setAllReports] = useState<AdminReportItem[]>([]);
   const [reportDepartment, setReportDepartment] = useState<ReportDepartment>('sales');
   const [managerReportData, setManagerReportData] = useState<{
     returns: ProductReturn[];
@@ -71,26 +73,6 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
   const [selfieModalVisible, setSelfieModalVisible] = useState(false);
   const [selectedEmployeeDetails, setSelectedEmployeeDetails] = useState<AdminEmployee | null>(null);
   const [employeeDetailsModalVisible, setEmployeeDetailsModalVisible] = useState(false);
-
-  const [addEmpModalVisible, setAddEmpModalVisible] = useState(false);
-  const [editEmpModalVisible, setEditEmpModalVisible] = useState(false);
-  const [empSubmitting, setEmpSubmitting] = useState(false);
-
-  const [newEmpFullName, setNewEmpFullName] = useState('');
-  const [newEmpId, setNewEmpId] = useState('');
-  const [newEmpEmail, setNewEmpEmail] = useState('');
-  const [newEmpDept, setNewEmpDept] = useState('Sales');
-  const [newEmpPhone, setNewEmpPhone] = useState('');
-  const [newEmpPassword, setNewEmpPassword] = useState('');
-  const [newEmpAvatarUrl, setNewEmpAvatarUrl] = useState('');
-
-  const [editingEmpId, setEditingEmpId] = useState<string | null>(null);
-  const [editEmpFullName, setEditEmpFullName] = useState('');
-  const [editEmpIdVal, setEditEmpIdVal] = useState('');
-  const [editEmpEmail, setEditEmpEmail] = useState('');
-  const [editEmpDept, setEditEmpDept] = useState('Sales');
-  const [editEmpPhone, setEditEmpPhone] = useState('');
-  const [editEmpAvatarUrl, setEditEmpAvatarUrl] = useState('');
 
   useEffect(() => {
     const onBackPress = () => true;
@@ -113,6 +95,7 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
       if (repRes.success && repRes.data) {
         setSalesByEmployee(repRes.data.salesByEmployee);
         setReportsSummary(repRes.data.summary);
+        setAllReports(repRes.data.reports || []);
       }
       setManagerReportData({
         returns: returnsRes.success ? returnsRes.data?.returns || [] : [],
@@ -136,128 +119,6 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
     setRefreshing(true);
     await fetchData();
     setRefreshing(false);
-  };
-
-  const handlePickNewEmpImage = async () => {
-    try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Please grant photo library access to choose employee image.');
-        return;
-      }
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.75,
-        base64: true,
-      });
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const asset = result.assets[0];
-        if (asset.base64) {
-          setNewEmpAvatarUrl(`data:${asset.mimeType || 'image/jpeg'};base64,${asset.base64}`);
-        } else if (asset.uri) {
-          setNewEmpAvatarUrl(asset.uri);
-        }
-      }
-    } catch (err) {
-      console.error('Image picker error:', err);
-    }
-  };
-
-  const handlePickEditEmpImage = async () => {
-    try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Please grant photo library access to choose employee image.');
-        return;
-      }
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.75,
-        base64: true,
-      });
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const asset = result.assets[0];
-        if (asset.base64) {
-          setEditEmpAvatarUrl(`data:${asset.mimeType || 'image/jpeg'};base64,${asset.base64}`);
-        } else if (asset.uri) {
-          setEditEmpAvatarUrl(asset.uri);
-        }
-      }
-    } catch (err) {
-      console.error('Image picker error:', err);
-    }
-  };
-
-  const handleCreateEmployee = async () => {
-    if (!newEmpFullName.trim() || !newEmpId.trim() || !newEmpEmail.trim()) {
-      Alert.alert('Validation Error', 'Please enter employee name, ID, and email.');
-      return;
-    }
-    setEmpSubmitting(true);
-    const res = await adminApi.createEmployee({
-      fullName: newEmpFullName.trim(),
-      employeeId: newEmpId.trim(),
-      email: newEmpEmail.trim(),
-      department: newEmpDept.trim(),
-      phone: newEmpPhone.trim(),
-      password: newEmpPassword.trim() || 'Password123!',
-      avatarUrl: newEmpAvatarUrl ? newEmpAvatarUrl.trim() : undefined,
-    });
-    setEmpSubmitting(false);
-    if (res.success) {
-      Alert.alert('Success', 'Employee created successfully!');
-      setAddEmpModalVisible(false);
-      setNewEmpFullName('');
-      setNewEmpId('');
-      setNewEmpEmail('');
-      setNewEmpPhone('');
-      setNewEmpPassword('');
-      setNewEmpAvatarUrl('');
-      fetchData();
-    } else {
-      Alert.alert('Error', res.error || 'Failed to create employee');
-    }
-  };
-
-  const handleOpenEditEmployee = (emp: AdminEmployee) => {
-    setEditingEmpId(emp.id);
-    setEditEmpFullName(emp.fullName);
-    setEditEmpIdVal(emp.employeeId);
-    setEditEmpEmail(emp.email);
-    setEditEmpDept(emp.department || 'Sales');
-    setEditEmpPhone(emp.phone || '');
-    setEditEmpAvatarUrl(emp.avatarUrl || '');
-    setEditEmpModalVisible(true);
-  };
-
-  const handleUpdateEmployee = async () => {
-    if (!editingEmpId) return;
-    if (!editEmpFullName.trim() || !editEmpIdVal.trim() || !editEmpEmail.trim()) {
-      Alert.alert('Validation Error', 'Please enter employee name, ID, and email.');
-      return;
-    }
-    setEmpSubmitting(true);
-    const res = await adminApi.updateEmployee(editingEmpId, {
-      fullName: editEmpFullName.trim(),
-      employeeId: editEmpIdVal.trim(),
-      email: editEmpEmail.trim(),
-      department: editEmpDept.trim(),
-      phone: editEmpPhone.trim(),
-      avatarUrl: editEmpAvatarUrl ? editEmpAvatarUrl.trim() : undefined,
-    });
-    setEmpSubmitting(false);
-    if (res.success) {
-      Alert.alert('Success', 'Employee details updated successfully!');
-      setEditEmpModalVisible(false);
-      setEditingEmpId(null);
-      fetchData();
-    } else {
-      Alert.alert('Error', res.error || 'Failed to update employee');
-    }
   };
 
   const handleDeleteEmployee = (emp: AdminEmployee) => {
@@ -335,6 +196,54 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
     return `₹${amount}`;
   };
 
+  const isDateInStatsMonth = (dateStr?: string) => {
+    if (!dateStr) return false;
+    const parts = dateStr.split('-');
+    if (parts.length >= 2) {
+      const recYear = parseInt(parts[0], 10);
+      const recMonth = parseInt(parts[1], 10);
+      const targetYear = stats?.currentYear ?? new Date().getFullYear();
+      if (recYear !== targetYear) return false;
+
+      if (stats?.currentMonth) {
+        const monthNames = [
+          'january', 'february', 'march', 'april', 'may', 'june',
+          'july', 'august', 'september', 'october', 'november', 'december',
+        ];
+        const targetMonthIdx = monthNames.indexOf(stats.currentMonth.toLowerCase());
+        if (targetMonthIdx !== -1) {
+          return recMonth === targetMonthIdx + 1;
+        }
+      }
+      return recMonth === new Date().getMonth() + 1;
+    }
+    return true;
+  };
+
+  // Manager Monthly Calculations
+  const currentMonthReturns = managerReportData.returns.filter((r) => isDateInStatsMonth(r.date));
+  const currentMonthExpenses = managerReportData.expenses.filter((e) => isDateInStatsMonth(e.date));
+  const managerTotalExpenses = currentMonthExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+  const managerTotalReturns = currentMonthReturns.reduce((sum, r) => sum + (r.returnQuantity || 0), 0);
+  const managerKlTrendsReturns = currentMonthReturns.filter((r) => r.orderSource === 'kltrends').reduce((sum, r) => sum + (r.returnQuantity || 0), 0);
+  const managerKlIndiaReturns = currentMonthReturns.filter((r) => r.orderSource === 'klindia').reduce((sum, r) => sum + (r.returnQuantity || 0), 0);
+  const managerExpenseRecords = currentMonthExpenses.length;
+  const managerTotalRecords = currentMonthReturns.length + currentMonthExpenses.length;
+  const managerCategoryTotals = currentMonthExpenses.reduce<Record<string, number>>((acc, e) => {
+    const cat = e.customCategoryName || e.category || 'Other';
+    acc[cat] = (acc[cat] || 0) + (e.amount || 0);
+    return acc;
+  }, {});
+  const managerTopExpenseCategory = Object.entries(managerCategoryTotals).sort((a, b) => b[1] - a[1])[0];
+
+  // Packaging Monthly Calculations
+  const currentMonthPackingRecords = (packagingReportData?.records || []).filter((r) => isDateInStatsMonth(r.date));
+  const packagingTotalPacked = currentMonthPackingRecords.reduce((sum, r) => sum + (r.ordersPacked || 0), 0);
+  const packagingKlTrendsPacked = currentMonthPackingRecords.filter((r) => r.orderSource === 'kltrends').reduce((sum, r) => sum + (r.ordersPacked || 0), 0);
+  const packagingKlIndiaPacked = currentMonthPackingRecords.filter((r) => r.orderSource === 'klindia').reduce((sum, r) => sum + (r.ordersPacked || 0), 0);
+  const packagingTotalRecords = currentMonthPackingRecords.length;
+  const packagingActivePackers = new Set(currentMonthPackingRecords.map((r) => r.userId)).size;
+
   const getEarlyReasonConfig = (reasonText: string) => {
     const r = (reasonText || '').toLowerCase();
     if (r.includes('medical') || r.includes('health') || r.includes('doctor') || r.includes('sick') || r.includes('hospital') || r.includes('fever')) {
@@ -385,8 +294,8 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
     }
 
     if (department === 'manager') {
-      const returns = managerReportData.returns.filter((record) => record.userId === employeeId);
-      const expenses = managerReportData.expenses.filter((record) => record.userId === employeeId);
+      const returns = currentMonthReturns.filter((record) => record.userId === employeeId);
+      const expenses = currentMonthExpenses.filter((record) => record.userId === employeeId);
       return (
         <>
           <Text style={styles.detailSectionLabel}>MANAGER PERFORMANCE</Text>
@@ -400,7 +309,7 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
     }
 
     if (department === 'packaging') {
-      const records = (packagingReportData?.records || []).filter((record) => record.userId === employeeId);
+      const records = currentMonthPackingRecords.filter((record) => record.userId === employeeId);
       const packed = records.reduce((sum, record) => sum + record.ordersPacked, 0);
       const kltrends = records.filter((record) => record.orderSource === 'kltrends').reduce((sum, record) => sum + record.ordersPacked, 0);
       const klindia = records.filter((record) => record.orderSource === 'klindia').reduce((sum, record) => sum + record.ordersPacked, 0);
@@ -491,9 +400,16 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
           ))}
         </View>
 
+        {/* ── Dashboard Analytics & Progress Bar (Reference Design) ── */}
+        <DashboardAnalyticsChart
+          stats={stats}
+          reportsSummary={reportsSummary}
+          reports={allReports}
+        />
+
         <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionLabel}>This Month · {stats.currentMonth} {stats.currentYear}</Text>
-          <TouchableOpacity onPress={() => setActiveSection('reports')} activeOpacity={0.7} style={styles.viewAllReportsBtn}>
+          <Text style={styles.sectionLabel}>This Month Sales · {stats.currentMonth} {stats.currentYear}</Text>
+          <TouchableOpacity onPress={() => { setReportDepartment('sales'); setActiveSection('reports'); }} activeOpacity={0.7} style={styles.viewAllReportsBtn}>
             <Text style={styles.viewAllReportsText}>View Details</Text>
             <Ionicons name="arrow-forward" size={12} color={colors.primary} />
           </TouchableOpacity>
@@ -549,7 +465,6 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
                 {stats.totalMonthlyPrepaidOrders ?? 0}
               </Text>
             </View>
-
           </View>
 
           {/* WhatsApp Enquiries Footer Bar */}
@@ -560,6 +475,214 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
             </View>
             <View style={styles.monthlyWhatsappBadge}>
               <Text style={styles.monthlyWhatsappValue}>{stats.totalMonthlyWhatsappEnquiries ?? 0}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ── Manager This Month Report ── */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionLabel}>This Month Manager · {stats.currentMonth} {stats.currentYear}</Text>
+          <TouchableOpacity
+            onPress={() => {
+              setReportDepartment('manager');
+              setActiveSection('reports');
+            }}
+            activeOpacity={0.7}
+            style={styles.viewAllReportsBtn}
+          >
+            <Text style={styles.viewAllReportsText}>View Details</Text>
+            <Ionicons name="arrow-forward" size={12} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.monthlyHeroCard}>
+          {/* Expenses & Returns Top Row */}
+          <View style={styles.monthlyHeroTopRow}>
+            {/* Total Expenses Box */}
+            <View style={[styles.monthlyHeroMainBox, { backgroundColor: '#FFFBEB', borderColor: '#FDE68A' }]}>
+              <View style={[styles.monthlyHeroIconWrap, { backgroundColor: '#FEF3C7' }]}>
+                <Ionicons name="wallet-outline" size={20} color="#D97706" />
+              </View>
+              <Text style={[styles.monthlyHeroLabel, { color: '#92400E' }]}>TOTAL EXPENSES</Text>
+              <Text style={[styles.monthlyHeroBigVal, { color: '#B45309' }]}>
+                {formatCurrency(managerTotalExpenses)}
+              </Text>
+            </View>
+
+            {/* Total Product Returns Box */}
+            <View style={[styles.monthlyHeroMainBox, { backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}>
+              <View style={[styles.monthlyHeroIconWrap, { backgroundColor: '#FEE2E2' }]}>
+                <Ionicons name="return-down-back-outline" size={20} color="#DC2626" />
+              </View>
+              <View style={styles.autoTagRow}>
+                <Text style={[styles.monthlyHeroLabel, { color: '#991B1B' }]}>PRODUCT RETURNS</Text>
+              </View>
+              <Text style={[styles.monthlyHeroBigVal, { color: '#DC2626' }]}>
+                {managerTotalReturns}
+              </Text>
+            </View>
+          </View>
+
+          {/* 4-Item Breakdown Grid */}
+          <View style={styles.breakdownGrid}>
+            <View style={[styles.breakdownCard, { backgroundColor: '#FFF7ED', borderColor: '#FED7AA' }]}>
+              <View style={styles.breakdownCardTop}>
+                <Ionicons name="cube-outline" size={15} color="#EA580C" />
+                <Text style={[styles.breakdownCardLabel, { color: '#9A3412' }]}>KLTrends Returns</Text>
+              </View>
+              <Text style={[styles.breakdownCardVal, { color: '#C2410C' }]}>
+                {managerKlTrendsReturns}
+              </Text>
+            </View>
+
+            <View style={[styles.breakdownCard, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}>
+              <View style={styles.breakdownCardTop}>
+                <Ionicons name="cube-outline" size={15} color="#2563EB" />
+                <Text style={[styles.breakdownCardLabel, { color: '#1E40AF' }]}>KLIndia Returns</Text>
+              </View>
+              <Text style={[styles.breakdownCardVal, { color: '#1D4ED8' }]}>
+                {managerKlIndiaReturns}
+              </Text>
+            </View>
+
+            <View style={[styles.breakdownCard, { backgroundColor: '#F5F3FF', borderColor: '#DDD6FE' }]}>
+              <View style={styles.breakdownCardTop}>
+                <Ionicons name="receipt-outline" size={15} color="#7C3AED" />
+                <Text style={[styles.breakdownCardLabel, { color: '#6D28D9' }]}>Expense Entries</Text>
+              </View>
+              <Text style={[styles.breakdownCardVal, { color: '#5B21B6' }]}>
+                {managerExpenseRecords}
+              </Text>
+            </View>
+
+            <View style={[styles.breakdownCard, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
+              <View style={styles.breakdownCardTop}>
+                <Ionicons name="document-text-outline" size={15} color="#16A34A" />
+                <Text style={[styles.breakdownCardLabel, { color: '#15803D' }]}>Total Records</Text>
+              </View>
+              <Text style={[styles.breakdownCardVal, { color: '#16A34A' }]}>
+                {managerTotalRecords}
+              </Text>
+            </View>
+          </View>
+
+          {/* Footer Bar */}
+          <View style={[styles.monthlyWhatsappBar, { backgroundColor: '#FFFBEB', borderColor: '#FDE68A' }]}>
+            <View style={styles.monthlyWhatsappLeft}>
+              <Ionicons name="pie-chart-outline" size={16} color="#B45309" />
+              <Text style={[styles.monthlyWhatsappLabel, { color: '#92400E' }]}>
+                {managerTopExpenseCategory
+                  ? `Top Category: ${managerTopExpenseCategory[0].replace(/_/g, ' ').toUpperCase()}`
+                  : 'Manager Operations'}
+              </Text>
+            </View>
+            <View style={[styles.monthlyWhatsappBadge, { backgroundColor: '#FEF3C7' }]}>
+              <Text style={[styles.monthlyWhatsappValue, { color: '#B45309' }]}>
+                {managerTopExpenseCategory ? formatCurrency(managerTopExpenseCategory[1]) : `${managerTotalRecords} records`}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ── Packaging This Month Report ── */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionLabel}>This Month Packaging · {stats.currentMonth} {stats.currentYear}</Text>
+          <TouchableOpacity
+            onPress={() => {
+              setReportDepartment('packaging');
+              setActiveSection('reports');
+            }}
+            activeOpacity={0.7}
+            style={styles.viewAllReportsBtn}
+          >
+            <Text style={styles.viewAllReportsText}>View Details</Text>
+            <Ionicons name="arrow-forward" size={12} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.monthlyHeroCard}>
+          {/* Packed & Entries Top Row */}
+          <View style={styles.monthlyHeroTopRow}>
+            {/* Total Packed Box */}
+            <View style={[styles.monthlyHeroMainBox, { backgroundColor: colors.primaryTint, borderColor: colors.borderPurple }]}>
+              <View style={[styles.monthlyHeroIconWrap, { backgroundColor: colors.primarySoft }]}>
+                <Ionicons name="cube" size={20} color={colors.primary} />
+              </View>
+              <Text style={[styles.monthlyHeroLabel, { color: colors.primary }]}>TOTAL ORDERS PACKED</Text>
+              <Text style={[styles.monthlyHeroBigVal, { color: colors.primary }]}>
+                {packagingTotalPacked.toLocaleString('en-IN')}
+              </Text>
+            </View>
+
+            {/* Packaging Entries Box */}
+            <View style={[styles.monthlyHeroMainBox, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
+              <View style={[styles.monthlyHeroIconWrap, { backgroundColor: '#DCFCE7' }]}>
+                <Ionicons name="archive-outline" size={20} color="#16A34A" />
+              </View>
+              <View style={styles.autoTagRow}>
+                <Text style={[styles.monthlyHeroLabel, { color: '#15803D' }]}>LOGGED ENTRIES</Text>
+              </View>
+              <Text style={[styles.monthlyHeroBigVal, { color: '#16A34A' }]}>
+                {packagingTotalRecords}
+              </Text>
+            </View>
+          </View>
+
+          {/* 4-Item Breakdown Grid */}
+          <View style={styles.breakdownGrid}>
+            <View style={[styles.breakdownCard, { backgroundColor: '#FFFBEB', borderColor: '#FDE68A' }]}>
+              <View style={styles.breakdownCardTop}>
+                <Ionicons name="cube-outline" size={15} color="#D97706" />
+                <Text style={[styles.breakdownCardLabel, { color: '#92400E' }]}>KLTrends</Text>
+              </View>
+              <Text style={[styles.breakdownCardVal, { color: '#B45309' }]}>
+                {packagingKlTrendsPacked.toLocaleString('en-IN')}
+              </Text>
+            </View>
+
+            <View style={[styles.breakdownCard, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}>
+              <View style={styles.breakdownCardTop}>
+                <Ionicons name="cube-outline" size={15} color="#2563EB" />
+                <Text style={[styles.breakdownCardLabel, { color: '#1E40AF' }]}>KLIndia</Text>
+              </View>
+              <Text style={[styles.breakdownCardVal, { color: '#1D4ED8' }]}>
+                {packagingKlIndiaPacked.toLocaleString('en-IN')}
+              </Text>
+            </View>
+
+            <View style={[styles.breakdownCard, { backgroundColor: '#F5F3FF', borderColor: '#DDD6FE' }]}>
+              <View style={styles.breakdownCardTop}>
+                <Ionicons name="people-outline" size={15} color="#7C3AED" />
+                <Text style={[styles.breakdownCardLabel, { color: '#6D28D9' }]}>Active Staff</Text>
+              </View>
+              <Text style={[styles.breakdownCardVal, { color: '#5B21B6' }]}>
+                {packagingActivePackers}
+              </Text>
+            </View>
+
+            <View style={[styles.breakdownCard, { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0' }]}>
+              <View style={styles.breakdownCardTop}>
+                <Ionicons name="speedometer-outline" size={15} color="#475569" />
+                <Text style={[styles.breakdownCardLabel, { color: '#334155' }]}>Avg / Entry</Text>
+              </View>
+              <Text style={[styles.breakdownCardVal, { color: '#1E293B' }]}>
+                {packagingTotalRecords > 0 ? Math.round(packagingTotalPacked / packagingTotalRecords) : 0}
+              </Text>
+            </View>
+          </View>
+
+          {/* Footer Bar */}
+          <View style={[styles.monthlyWhatsappBar, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
+            <View style={styles.monthlyWhatsappLeft}>
+              <Ionicons name="checkmark-done-circle" size={16} color="#16A34A" />
+              <Text style={[styles.monthlyWhatsappLabel, { color: '#15803D' }]}>
+                Packaging Fulfillment Status
+              </Text>
+            </View>
+            <View style={[styles.monthlyWhatsappBadge, { backgroundColor: '#DCFCE7' }]}>
+              <Text style={[styles.monthlyWhatsappValue, { color: '#16A34A' }]}>
+                {packagingTotalPacked} Orders
+              </Text>
             </View>
           </View>
         </View>
@@ -590,12 +713,12 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.quickGrid}>
           {[
             {
-              title: 'Add Staff',
-              desc: 'Create new profile',
-              icon: 'person-add',
+              title: 'Attendance',
+              desc: "Today's check-ins",
+              icon: 'time',
               iconColor: '#7C3AED',
               iconBg: '#F5F3FF',
-              onPress: () => setAddEmpModalVisible(true),
+              onPress: () => setActiveSection('employees'),
             },
             {
               title: 'Staff List',
@@ -819,13 +942,6 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
             </TouchableOpacity>
           )}
         </View>
-        <TouchableOpacity
-          style={styles.addBtn}
-          onPress={() => setAddEmpModalVisible(true)}
-          activeOpacity={0.85}
-        >
-          <Ionicons name="add" size={18} color="#FFFFFF" />
-        </TouchableOpacity>
       </View>
 
       <Text style={styles.countText}>
@@ -927,14 +1043,6 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.empDetailsBtnText}>Full Profile</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.empEditBtn}
-                onPress={() => handleOpenEditEmployee(emp)}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="create-outline" size={13} color={colors.primary} style={{ marginRight: 4 }} />
-                <Text style={styles.empEditBtnText}>Edit</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
                 style={styles.empDeleteBtn}
                 onPress={() => handleDeleteEmployee(emp)}
                 activeOpacity={0.8}
@@ -985,22 +1093,16 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
     );
 
     const cards = departmentEmployees.map((employee) => {
-      const returns = managerReportData.returns.filter((record) => record.userId === employee.id);
-      const expenses = managerReportData.expenses.filter((record) => record.userId === employee.id);
-      const packingRecords = (packagingReportData?.records || []).filter((record) => record.userId === employee.id);
+      const returns = currentMonthReturns.filter((record) => record.userId === employee.id);
+      const expenses = currentMonthExpenses.filter((record) => record.userId === employee.id);
+      const packingRecords = currentMonthPackingRecords.filter((record) => record.userId === employee.id);
 
       const metrics = reportDepartment === 'manager'
         ? [
-            { label: 'Returns', value: returns.reduce((sum, record) => sum + record.returnQuantity, 0), color: '#DC2626' },
-            { label: 'Expenses', value: `₹${expenses.reduce((sum, record) => sum + record.amount, 0).toLocaleString('en-IN')}`, color: '#D97706' },
-            { label: 'Records', value: returns.length + expenses.length, color: colors.primary },
-          ]
-        : reportDepartment === 'packaging'
-        ? [
-            { label: 'Packed', value: packingRecords.reduce((sum, record) => sum + record.ordersPacked, 0), color: colors.primary },
-            { label: 'KLTrends', value: packingRecords.filter((record) => record.orderSource === 'kltrends').reduce((sum, record) => sum + record.ordersPacked, 0), color: '#D97706' },
-            { label: 'KLIndia', value: packingRecords.filter((record) => record.orderSource === 'klindia').reduce((sum, record) => sum + record.ordersPacked, 0), color: '#2563EB' },
-          ]
+          { label: 'Returns', value: returns.reduce((sum, record) => sum + record.returnQuantity, 0), color: '#DC2626' },
+          { label: 'Expenses', value: `₹${expenses.reduce((sum, record) => sum + record.amount, 0).toLocaleString('en-IN')}`, color: '#D97706' },
+          { label: 'Records', value: returns.length + expenses.length, color: colors.primary },
+        ]
         : [
             { label: 'Packed', value: packingRecords.reduce((sum, record) => sum + record.ordersPacked, 0), color: colors.primary },
             { label: 'KLTrends', value: packingRecords.filter((record) => record.orderSource === 'kltrends').reduce((sum, record) => sum + record.ordersPacked, 0), color: '#D97706' },
@@ -1014,6 +1116,66 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
     const maxValue = Math.max(1, ...cards.map((card) => card.primaryValue));
     return (
       <>
+        {reportDepartment === 'manager' && (
+          <View style={styles.minimalReportCard}>
+            <View style={styles.monthlyHeroTopRow}>
+              <View style={[styles.monthlyHeroMainBox, { backgroundColor: '#FFFBEB', borderColor: '#FDE68A' }]}>
+                <Text style={[styles.minimalRevenueLabel, { color: '#B45309' }]}>TOTAL EXPENSES</Text>
+                <Text style={[styles.minimalRevenueVal, { color: '#B45309' }]}>{formatCurrency(managerTotalExpenses)}</Text>
+              </View>
+              <View style={[styles.monthlyHeroMainBox, { backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}>
+                <Text style={[styles.minimalRevenueLabel, { color: '#DC2626' }]}>PRODUCT RETURNS</Text>
+                <Text style={[styles.minimalRevenueVal, { color: '#DC2626' }]}>{managerTotalReturns}</Text>
+              </View>
+            </View>
+
+            <View style={styles.minimalMetricsRow}>
+              <View style={[styles.minimalMetricCol, styles.codMetric]}>
+                <Ionicons name="cube-outline" size={18} color="#EA580C" />
+                <Text style={[styles.minimalMetricNum, { color: '#C2410C' }]}>{managerKlTrendsReturns}</Text>
+                <Text style={[styles.minimalMetricName, { color: '#9A3412' }]}>KLTrends</Text>
+              </View>
+              <View style={[styles.minimalMetricCol, styles.prepaidMetric]}>
+                <Ionicons name="cube-outline" size={18} color="#2563EB" />
+                <Text style={[styles.minimalMetricNum, { color: '#1D4ED8' }]}>{managerKlIndiaReturns}</Text>
+                <Text style={[styles.minimalMetricName, { color: '#1E40AF' }]}>KLIndia</Text>
+              </View>
+              <View style={[styles.minimalMetricCol, styles.totalOrdersMetric]}>
+                <Ionicons name="receipt-outline" size={18} color="#7C3AED" />
+                <Text style={[styles.minimalMetricNum, { color: '#6D28D9' }]}>{managerExpenseRecords}</Text>
+                <Text style={[styles.minimalMetricName, { color: '#6D28D9' }]}>Expense Logs</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {reportDepartment === 'packaging' && (
+          <View style={styles.minimalReportCard}>
+            <View style={styles.minimalRevenueBlock}>
+              <Text style={styles.minimalRevenueLabel}>TOTAL ORDERS PACKED</Text>
+              <Text style={styles.minimalRevenueVal}>{packagingTotalPacked.toLocaleString('en-IN')}</Text>
+            </View>
+
+            <View style={styles.minimalMetricsRow}>
+              <View style={[styles.minimalMetricCol, styles.codMetric]}>
+                <Ionicons name="cube-outline" size={18} color="#D97706" />
+                <Text style={[styles.minimalMetricNum, { color: '#B45309' }]}>{packagingKlTrendsPacked}</Text>
+                <Text style={[styles.minimalMetricName, { color: '#92400E' }]}>KLTrends</Text>
+              </View>
+              <View style={[styles.minimalMetricCol, styles.prepaidMetric]}>
+                <Ionicons name="cube-outline" size={18} color="#2563EB" />
+                <Text style={[styles.minimalMetricNum, { color: '#1D4ED8' }]}>{packagingKlIndiaPacked}</Text>
+                <Text style={[styles.minimalMetricName, { color: '#1E40AF' }]}>KLIndia</Text>
+              </View>
+              <View style={[styles.minimalMetricCol, styles.totalOrdersMetric]}>
+                <Ionicons name="documents-outline" size={18} color="#7C3AED" />
+                <Text style={[styles.minimalMetricNum, { color: '#6D28D9' }]}>{packagingTotalRecords}</Text>
+                <Text style={[styles.minimalMetricName, { color: '#6D28D9' }]}>Packing Logs</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
         <View style={styles.reportsSectionHeader}>
           <Text style={styles.sectionLabel}>Team {reportDepartment.charAt(0).toUpperCase() + reportDepartment.slice(1)} Performance</Text>
           <Text style={styles.reportsTeamCount}>{cards.length} {cards.length === 1 ? 'employee' : 'employees'}</Text>
@@ -1093,128 +1255,128 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
 
         {reportDepartment !== 'sales' ? null : <>
 
-        {reportsSummary && (
-          <View style={styles.minimalReportCard}>
-            {/* Main Revenue Block */}
-            <View style={styles.minimalRevenueBlock}>
-              <Text style={styles.minimalRevenueLabel}>TOTAL SALES REVENUE</Text>
-              <Text style={styles.minimalRevenueVal}>{formatCurrency(reportsSummary.totalSales)}</Text>
+          {reportsSummary && (
+            <View style={styles.minimalReportCard}>
+              {/* Main Revenue Block */}
+              <View style={styles.minimalRevenueBlock}>
+                <Text style={styles.minimalRevenueLabel}>TOTAL SALES REVENUE</Text>
+                <Text style={styles.minimalRevenueVal}>{formatCurrency(reportsSummary.totalSales)}</Text>
+              </View>
+
+              {/* Order Metrics */}
+              <View style={styles.minimalMetricsRow}>
+                <View style={[styles.minimalMetricCol, styles.totalOrdersMetric]}>
+                  <Ionicons name="cart-outline" size={18} color="#7C3AED" />
+                  <Text style={styles.minimalMetricNum}>{totalOrders}</Text>
+                  <Text style={styles.minimalMetricName}>Total Orders</Text>
+                </View>
+                <View style={[styles.minimalMetricCol, styles.codMetric]}>
+                  <Ionicons name="cube-outline" size={18} color="#D97706" />
+                  <Text style={[styles.minimalMetricNum, { color: '#B45309' }]}>
+                    {reportsSummary.totalCodOrders ?? 0}
+                  </Text>
+                  <Text style={[styles.minimalMetricName, { color: '#92400E' }]}>COD Orders</Text>
+                </View>
+                <View style={[styles.minimalMetricCol, styles.prepaidMetric]}>
+                  <Ionicons name="card-outline" size={18} color="#2563EB" />
+                  <Text style={[styles.minimalMetricNum, { color: '#1D4ED8' }]}>
+                    {reportsSummary.totalPrepaidOrders ?? 0}
+                  </Text>
+                  <Text style={[styles.minimalMetricName, { color: '#1E40AF' }]}>Prepaid</Text>
+                </View>
+              </View>
+
+              {/* Minimal WhatsApp Notice */}
+              {(reportsSummary.totalWhatsappEnquiries ?? 0) > 0 && (
+                <View style={styles.minimalWhatsappRow}>
+                  <Ionicons name="logo-whatsapp" size={14} color="#16A34A" />
+                  <Text style={styles.minimalWhatsappText}>
+                    <Text style={{ fontWeight: '800' }}>{reportsSummary.totalWhatsappEnquiries}</Text> WhatsApp customer enquiries received
+                  </Text>
+                </View>
+              )}
             </View>
+          )}
 
-            {/* Order Metrics */}
-            <View style={styles.minimalMetricsRow}>
-              <View style={[styles.minimalMetricCol, styles.totalOrdersMetric]}>
-                <Ionicons name="cart-outline" size={18} color="#7C3AED" />
-                <Text style={styles.minimalMetricNum}>{totalOrders}</Text>
-                <Text style={styles.minimalMetricName}>Total Orders</Text>
-              </View>
-              <View style={[styles.minimalMetricCol, styles.codMetric]}>
-                <Ionicons name="cube-outline" size={18} color="#D97706" />
-                <Text style={[styles.minimalMetricNum, { color: '#B45309' }]}>
-                  {reportsSummary.totalCodOrders ?? 0}
-                </Text>
-                <Text style={[styles.minimalMetricName, { color: '#92400E' }]}>COD Orders</Text>
-              </View>
-              <View style={[styles.minimalMetricCol, styles.prepaidMetric]}>
-                <Ionicons name="card-outline" size={18} color="#2563EB" />
-                <Text style={[styles.minimalMetricNum, { color: '#1D4ED8' }]}>
-                  {reportsSummary.totalPrepaidOrders ?? 0}
-                </Text>
-                <Text style={[styles.minimalMetricName, { color: '#1E40AF' }]}>Prepaid</Text>
-              </View>
+          {/* Sales by Employee Section Header */}
+          <View style={styles.reportsSectionHeader}>
+            <Text style={styles.sectionLabel}>Team Sales Performance</Text>
+            <Text style={styles.reportsTeamCount}>
+              {salesByEmployee.length} {salesByEmployee.length === 1 ? 'employee' : 'employees'}
+            </Text>
+          </View>
+
+          {/* Clean Employee Cards */}
+          {salesByEmployee.map((emp, i) => {
+            const maxSales = salesByEmployee[0]?.totalSales || 1;
+            const pct = Math.max(6, (emp.totalSales / maxSales) * 100);
+            const empOrders = emp.totalOrders ?? ((emp.totalCodOrders || 0) + (emp.totalPrepaidOrders || 0));
+
+            return (
+              <TouchableOpacity
+                key={emp.userId}
+                style={styles.minimalEmpCard}
+                onPress={() => {
+                  const fullEmp = employees.find((e) => e.id === emp.userId);
+                  if (fullEmp) openEmployeeDetails(fullEmp);
+                }}
+                activeOpacity={0.8}
+              >
+                {/* Top Row: Avatar, Info, Revenue */}
+                <View style={styles.minimalEmpTop}>
+                  <View style={styles.minimalEmpRankBadge}>
+                    <Text style={styles.minimalEmpRankText}>#{i + 1}</Text>
+                  </View>
+                  <Image
+                    source={{ uri: emp.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.fullName)}&background=F1E6F8&color=570490&size=200` }}
+                    style={styles.minimalEmpAvatar}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.minimalEmpName}>{emp.fullName}</Text>
+                    <Text style={styles.minimalEmpMeta}>{emp.department} · {emp.employeeId || '--'}</Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={styles.minimalEmpSales}>{formatCurrency(emp.totalSales)}</Text>
+                    <Text style={styles.minimalEmpReports}>{emp.reportCount} {emp.reportCount === 1 ? 'report' : 'reports'}</Text>
+                  </View>
+                </View>
+
+                {/* Order Stats Single-line Summary */}
+                <View style={styles.minimalEmpStatsRow}>
+                  <View style={styles.minimalEmpStatItem}>
+                    <Ionicons name="calculator-outline" size={12} color="#7C3AED" />
+                    <Text style={styles.minimalEmpStatText}>
+                      Orders: <Text style={{ fontWeight: '800' }}>{empOrders}</Text>
+                    </Text>
+                  </View>
+                  <Text style={styles.minimalEmpStatDot}>·</Text>
+                  <View style={styles.minimalEmpStatItem}>
+                    <Text style={styles.minimalEmpStatText}>
+                      COD: <Text style={{ fontWeight: '800', color: '#D97706' }}>{emp.totalCodOrders ?? 0}</Text>
+                    </Text>
+                  </View>
+                  <Text style={styles.minimalEmpStatDot}>·</Text>
+                  <View style={styles.minimalEmpStatItem}>
+                    <Text style={styles.minimalEmpStatText}>
+                      Prepaid: <Text style={{ fontWeight: '800', color: '#2563EB' }}>{emp.totalPrepaidOrders ?? 0}</Text>
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Minimal Slim Progress Bar */}
+                <View style={styles.minimalProgressBg}>
+                  <View style={[styles.minimalProgressFill, { width: `${pct}%` }]} />
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+
+          {salesByEmployee.length === 0 && (
+            <View style={styles.emptyWrap}>
+              <Ionicons name="bar-chart-outline" size={44} color={colors.border} />
+              <Text style={styles.emptyText}>No sales reports this month</Text>
             </View>
-
-            {/* Minimal WhatsApp Notice */}
-            {(reportsSummary.totalWhatsappEnquiries ?? 0) > 0 && (
-              <View style={styles.minimalWhatsappRow}>
-                <Ionicons name="logo-whatsapp" size={14} color="#16A34A" />
-                <Text style={styles.minimalWhatsappText}>
-                  <Text style={{ fontWeight: '800' }}>{reportsSummary.totalWhatsappEnquiries}</Text> WhatsApp customer enquiries received
-                </Text>
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* Sales by Employee Section Header */}
-        <View style={styles.reportsSectionHeader}>
-          <Text style={styles.sectionLabel}>Team Sales Performance</Text>
-          <Text style={styles.reportsTeamCount}>
-            {salesByEmployee.length} {salesByEmployee.length === 1 ? 'employee' : 'employees'}
-          </Text>
-        </View>
-
-        {/* Clean Employee Cards */}
-        {salesByEmployee.map((emp, i) => {
-          const maxSales = salesByEmployee[0]?.totalSales || 1;
-          const pct = Math.max(6, (emp.totalSales / maxSales) * 100);
-          const empOrders = emp.totalOrders ?? ((emp.totalCodOrders || 0) + (emp.totalPrepaidOrders || 0));
-
-          return (
-            <TouchableOpacity
-              key={emp.userId}
-              style={styles.minimalEmpCard}
-              onPress={() => {
-                const fullEmp = employees.find((e) => e.id === emp.userId);
-                if (fullEmp) openEmployeeDetails(fullEmp);
-              }}
-              activeOpacity={0.8}
-            >
-              {/* Top Row: Avatar, Info, Revenue */}
-              <View style={styles.minimalEmpTop}>
-                <View style={styles.minimalEmpRankBadge}>
-                  <Text style={styles.minimalEmpRankText}>#{i + 1}</Text>
-                </View>
-                <Image
-                  source={{ uri: emp.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.fullName)}&background=F1E6F8&color=570490&size=200` }}
-                  style={styles.minimalEmpAvatar}
-                />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.minimalEmpName}>{emp.fullName}</Text>
-                  <Text style={styles.minimalEmpMeta}>{emp.department} · {emp.employeeId || '--'}</Text>
-                </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={styles.minimalEmpSales}>{formatCurrency(emp.totalSales)}</Text>
-                  <Text style={styles.minimalEmpReports}>{emp.reportCount} {emp.reportCount === 1 ? 'report' : 'reports'}</Text>
-                </View>
-              </View>
-
-              {/* Order Stats Single-line Summary */}
-              <View style={styles.minimalEmpStatsRow}>
-                <View style={styles.minimalEmpStatItem}>
-                  <Ionicons name="calculator-outline" size={12} color="#7C3AED" />
-                  <Text style={styles.minimalEmpStatText}>
-                    Orders: <Text style={{ fontWeight: '800' }}>{empOrders}</Text>
-                  </Text>
-                </View>
-                <Text style={styles.minimalEmpStatDot}>·</Text>
-                <View style={styles.minimalEmpStatItem}>
-                  <Text style={styles.minimalEmpStatText}>
-                    COD: <Text style={{ fontWeight: '800', color: '#D97706' }}>{emp.totalCodOrders ?? 0}</Text>
-                  </Text>
-                </View>
-                <Text style={styles.minimalEmpStatDot}>·</Text>
-                <View style={styles.minimalEmpStatItem}>
-                  <Text style={styles.minimalEmpStatText}>
-                    Prepaid: <Text style={{ fontWeight: '800', color: '#2563EB' }}>{emp.totalPrepaidOrders ?? 0}</Text>
-                  </Text>
-                </View>
-              </View>
-
-              {/* Minimal Slim Progress Bar */}
-              <View style={styles.minimalProgressBg}>
-                <View style={[styles.minimalProgressFill, { width: `${pct}%` }]} />
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-
-        {salesByEmployee.length === 0 && (
-          <View style={styles.emptyWrap}>
-            <Ionicons name="bar-chart-outline" size={44} color={colors.border} />
-            <Text style={styles.emptyText}>No sales reports this month</Text>
-          </View>
-        )}
+          )}
         </>}
       </>
     );
@@ -1395,144 +1557,6 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
           </View>
         </Modal>
       )}
-
-      {/* ── Add employee modal ── */}
-      <Modal animationType="slide" transparent visible={addEmpModalVisible} onRequestClose={() => setAddEmpModalVisible(false)}>
-        <View style={styles.modalBg}>
-          <View style={styles.formCard}>
-            <View style={styles.formCardHeader}>
-              <Text style={styles.formCardTitle}>Add Employee</Text>
-              <TouchableOpacity onPress={() => setAddEmpModalVisible(false)}>
-                <Ionicons name="close" size={22} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-              {/* Photo Picker Header */}
-              <View style={styles.modalPhotoPickerWrap}>
-                <TouchableOpacity
-                  style={styles.modalPhotoPickerBtn}
-                  onPress={handlePickNewEmpImage}
-                  activeOpacity={0.8}
-                >
-                  {newEmpAvatarUrl ? (
-                    <Image source={{ uri: newEmpAvatarUrl }} style={styles.modalPhotoImage} />
-                  ) : (
-                    <View style={styles.modalPhotoPlaceholder}>
-                      <Ionicons name="camera-outline" size={28} color={colors.primary} />
-                      <Text style={styles.modalPhotoPlaceholderText}>Add Photo</Text>
-                    </View>
-                  )}
-                  <View style={styles.modalPhotoBadge}>
-                    <Ionicons name="add" size={14} color="#FFFFFF" />
-                  </View>
-                </TouchableOpacity>
-              </View>
-
-              {[
-                { label: 'Full Name *', value: newEmpFullName, setter: setNewEmpFullName, placeholder: 'e.g. Rahul Sharma', keyboard: 'default' as const },
-                { label: 'Employee ID *', value: newEmpId, setter: setNewEmpId, placeholder: 'e.g. EMP-1050', keyboard: 'default' as const },
-                { label: 'Work Email *', value: newEmpEmail, setter: setNewEmpEmail, placeholder: 'rahul@kltrends.com', keyboard: 'email-address' as const },
-                { label: 'Department', value: newEmpDept, setter: setNewEmpDept, placeholder: 'e.g. Sales', keyboard: 'default' as const },
-                { label: 'Phone', value: newEmpPhone, setter: setNewEmpPhone, placeholder: '9876543210', keyboard: 'phone-pad' as const },
-                { label: 'Default Password', value: newEmpPassword, setter: setNewEmpPassword, placeholder: 'Default: Password123!', keyboard: 'default' as const },
-              ].map((f, i) => (
-                <View key={i}>
-                  <Text style={styles.formLabel}>{f.label}</Text>
-                  <TextInput
-                    style={styles.formInput}
-                    placeholder={f.placeholder}
-                    placeholderTextColor={colors.textMuted}
-                    value={f.value}
-                    onChangeText={f.setter}
-                    keyboardType={f.keyboard}
-                    autoCapitalize={f.keyboard === 'email-address' ? 'none' : 'words'}
-                    secureTextEntry={f.label.includes('Password')}
-                  />
-                </View>
-              ))}
-              <View style={styles.formBtns}>
-                <TouchableOpacity style={styles.cancelBtn} onPress={() => setAddEmpModalVisible(false)}>
-                  <Text style={styles.cancelBtnText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.submitBtn} onPress={handleCreateEmployee} disabled={empSubmitting}>
-                  {empSubmitting
-                    ? <ActivityIndicator size="small" color="#FFFFFF" />
-                    : <Text style={styles.submitBtnText}>Create</Text>
-                  }
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* ── Edit employee modal ── */}
-      <Modal animationType="slide" transparent visible={editEmpModalVisible} onRequestClose={() => setEditEmpModalVisible(false)}>
-        <View style={styles.modalBg}>
-          <View style={styles.formCard}>
-            <View style={styles.formCardHeader}>
-              <Text style={styles.formCardTitle}>Edit Employee</Text>
-              <TouchableOpacity onPress={() => setEditEmpModalVisible(false)}>
-                <Ionicons name="close" size={22} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-              {/* Photo Picker Header */}
-              <View style={styles.modalPhotoPickerWrap}>
-                <TouchableOpacity
-                  style={styles.modalPhotoPickerBtn}
-                  onPress={handlePickEditEmpImage}
-                  activeOpacity={0.8}
-                >
-                  {editEmpAvatarUrl ? (
-                    <Image source={{ uri: editEmpAvatarUrl }} style={styles.modalPhotoImage} />
-                  ) : (
-                    <View style={styles.modalPhotoPlaceholder}>
-                      <Ionicons name="camera-outline" size={28} color={colors.primary} />
-                      <Text style={styles.modalPhotoPlaceholderText}>Change Photo</Text>
-                    </View>
-                  )}
-                  <View style={styles.modalPhotoBadge}>
-                    <Ionicons name="camera" size={12} color="#FFFFFF" />
-                  </View>
-                </TouchableOpacity>
-              </View>
-
-              {[
-                { label: 'Full Name *', value: editEmpFullName, setter: setEditEmpFullName, placeholder: 'Full Name', keyboard: 'default' as const },
-                { label: 'Employee ID *', value: editEmpIdVal, setter: setEditEmpIdVal, placeholder: 'Employee ID', keyboard: 'default' as const },
-                { label: 'Work Email *', value: editEmpEmail, setter: setEditEmpEmail, placeholder: 'Work Email', keyboard: 'email-address' as const },
-                { label: 'Department', value: editEmpDept, setter: setEditEmpDept, placeholder: 'Department', keyboard: 'default' as const },
-                { label: 'Phone', value: editEmpPhone, setter: setEditEmpPhone, placeholder: 'Phone', keyboard: 'phone-pad' as const },
-              ].map((f, i) => (
-                <View key={i}>
-                  <Text style={styles.formLabel}>{f.label}</Text>
-                  <TextInput
-                    style={styles.formInput}
-                    placeholder={f.placeholder}
-                    placeholderTextColor="#9CA3AF"
-                    value={f.value}
-                    onChangeText={f.setter}
-                    keyboardType={f.keyboard}
-                    autoCapitalize={f.keyboard === 'email-address' ? 'none' : 'words'}
-                  />
-                </View>
-              ))}
-              <View style={styles.formBtns}>
-                <TouchableOpacity style={styles.cancelBtn} onPress={() => setEditEmpModalVisible(false)}>
-                  <Text style={styles.cancelBtnText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.submitBtn} onPress={handleUpdateEmployee} disabled={empSubmitting}>
-                  {empSubmitting
-                    ? <ActivityIndicator size="small" color="#FFFFFF" />
-                    : <Text style={styles.submitBtnText}>Save Changes</Text>
-                  }
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 };

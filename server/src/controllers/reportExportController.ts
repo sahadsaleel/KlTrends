@@ -7,7 +7,6 @@ import { Report } from '../models/Report.js';
 import { ProductReturn } from '../models/ProductReturn.js';
 import { DailyExpense } from '../models/DailyExpense.js';
 import { PackingRecord } from '../models/PackingRecord.js';
-import { MediaActivity } from '../models/MediaActivity.js';
 
 type ExportRow = {
   employeeName: string;
@@ -97,13 +96,7 @@ const columnsFor = (department: string): ExportColumn[] => {
       { header: 'Order Source', key: 'orderSource', width: 80 }, { header: 'Orders Packed', key: 'totalOrders', width: 75, align: 'right' },
     ];
   }
-  if (department === 'media') {
-    return [
-      { header: 'Employee Name', key: 'employeeName', width: 110 }, { header: 'Emp ID', key: 'employeeId', width: 55 },
-      { header: 'Department', key: 'department', width: 70 }, { header: 'Date', key: 'date', width: 60 },
-      { header: 'Activity', key: 'activityType', width: 80 }, { header: 'Videos', key: 'totalOrders', width: 65, align: 'right' },
-    ];
-  }
+
   return salesColumns;
 };
 
@@ -163,15 +156,7 @@ const activityRowsFor = async (start: string, end: string, department: string): 
     }));
   }
 
-  const [shoots, out] = await Promise.all([
-    MediaActivity.findFiltered({ activityType: 'video-shoot', startDate: start, endDate: end }),
-    MediaActivity.findFiltered({ activityType: 'video-out', startDate: start, endDate: end }),
-  ]);
-  return [...shoots, ...out].map((record) => ({
-    employeeName: record.employeeName || '--', employeeId: record.employeeId || '--', department: 'media', date: record.date,
-    totalSalesAmount: 0, whatsappEnquiries: 0, totalOrders: record.totalVideos, codOrders: record.activityType === 'video-shoot' ? record.totalVideos : 0,
-    prepaidOrders: record.activityType === 'video-out' ? record.totalVideos : 0, activityType: record.activityType,
-  }));
+  return [];
 };
 
 const formatCurrency = (val: number): string => `Rs. ${Number(val || 0).toLocaleString('en-IN')}`;
@@ -402,7 +387,7 @@ const generateAllDepartmentsPdfBuffer = (
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
-    (['sales', 'manager', 'packaging', 'media'] as const).forEach((department, departmentIndex) => {
+    (['sales', 'manager', 'packaging'] as const).forEach((department, departmentIndex) => {
       if (departmentIndex > 0) doc.addPage();
       const departmentRows = rows.filter((row) => row.department.toLowerCase() === department);
       const departmentColumns = columnsFor(department);
@@ -461,8 +446,8 @@ const generateAllDepartmentsPdfBuffer = (
           const value = column.key === 'totalSalesAmount'
             ? formatCurrency(Number(rawValue) || 0)
             : typeof rawValue === 'number'
-            ? rawValue.toLocaleString('en-IN')
-            : String(rawValue || '');
+              ? rawValue.toLocaleString('en-IN')
+              : String(rawValue || '');
           const width = column.width * scale;
           doc.font('Helvetica-Bold').fontSize(7).fillColor('#570490').text(value, x + 3, y + 7, { width: width - 6, align: column.align || 'left' });
           x += width;
@@ -479,11 +464,11 @@ export const exportEmployeeReports = async (req: AuthenticatedRequest, res: Resp
   try {
     const { start, end, label, periodName } = range(req.query as Record<string, any>);
     const requestedDepartment = String(req.query.department || 'all').toLowerCase();
-    const department = ['all', 'sales', 'manager', 'packaging', 'media'].includes(requestedDepartment)
+    const department = ['all', 'sales', 'manager', 'packaging'].includes(requestedDepartment)
       ? requestedDepartment
       : 'all';
     const rows = department === 'sales' ? await rowsFor(start, end, department) : department === 'all'
-      ? [...await rowsFor(start, end, 'all'), ...await activityRowsFor(start, end, 'manager'), ...await activityRowsFor(start, end, 'packaging'), ...await activityRowsFor(start, end, 'media')]
+      ? [...await rowsFor(start, end, 'all'), ...await activityRowsFor(start, end, 'manager'), ...await activityRowsFor(start, end, 'packaging')]
       : await activityRowsFor(start, end, department);
     if (!rows.length) {
       res.status(404).json({ success: false, error: 'No reports found for the selected period.' });
@@ -504,7 +489,7 @@ export const exportEmployeeReports = async (req: AuthenticatedRequest, res: Resp
     if (format === 'excel' || format === 'xlsx') {
       const workbook = new ExcelJS.Workbook();
       const sheet = workbook.addWorksheet('Reports');
-      const exportDepartments = department === 'all' ? ['sales', 'manager', 'packaging', 'media'] : [department];
+      const exportDepartments = department === 'all' ? ['sales', 'manager', 'packaging'] : [department];
       exportDepartments.forEach((exportDepartment, sheetIndex) => {
         const exportColumns = columnsFor(exportDepartment);
         const targetSheet = sheetIndex === 0 ? sheet : workbook.addWorksheet(exportDepartment.charAt(0).toUpperCase() + exportDepartment.slice(1));

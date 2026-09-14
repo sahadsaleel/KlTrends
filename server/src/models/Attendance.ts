@@ -151,6 +151,15 @@ export const Attendance = {
     return new AttendanceModel(rows[0]);
   },
 
+  async findLatestOpenByUser(userId: string): Promise<IAttendance | null> {
+    const rows = await query<any[]>(
+      'SELECT * FROM attendances WHERE userId = ? AND checkInTime IS NOT NULL AND checkOutTime IS NULL ORDER BY date DESC, checkInTime DESC LIMIT 1',
+      [userId]
+    );
+    if (!rows || rows.length === 0) return null;
+    return new AttendanceModel(rows[0]);
+  },
+
   async findByDate(date: string): Promise<IAttendance[]> {
     const rows = await query<any[]>('SELECT * FROM attendances WHERE date = ? ORDER BY date DESC', [date]);
     return rows.map((r) => new AttendanceModel(r));

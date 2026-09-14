@@ -36,6 +36,49 @@ export interface LateCheckInItem {
   reason: string;
 }
 
+export interface AnalyticsDataPoint {
+  label: string;
+  dateKey?: string;
+  value: number;
+  orders: number;
+  reportCount: number;
+  percentage: number;
+  detail: string;
+}
+
+export interface AnalyticsRangeData {
+  title: string;
+  currentVal: string;
+  targetVal: string;
+  targetPercentage: number;
+  totalSales: number;
+  totalOrders: number;
+  totalReports: number;
+  points: AnalyticsDataPoint[];
+}
+
+export interface DashboardTrendAnalytics {
+  day: AnalyticsRangeData;
+  week: AnalyticsRangeData;
+  month: AnalyticsRangeData;
+  departments?: {
+    sales: {
+      totalSales: number;
+      totalOrders: number;
+      reportCount: number;
+    };
+    manager: {
+      totalExpenses: number;
+      totalReturns: number;
+      expenseRecords: number;
+    };
+    packaging: {
+      totalPacked: number;
+      totalRecords: number;
+    };
+  };
+}
+
 export interface DashboardStats {
   totalEmployees: number;
   presentToday: number;
@@ -51,6 +94,7 @@ export interface DashboardStats {
   topPerformers: TopPerformer[];
   earlyCheckouts?: EarlyCheckoutItem[];
   lateCheckIns?: LateCheckInItem[];
+  analytics?: DashboardTrendAnalytics;
 }
 
 export interface DashboardResponse {
