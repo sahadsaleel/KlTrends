@@ -144,7 +144,7 @@ export const getDashboardStats = async (req: AuthenticatedRequest, res: Response
           department: user?.department || 'General',
           avatarUrl: user?.avatarUrl,
           checkInTime: attendance.checkInTime
-            ? new Date(attendance.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            ? formatISTTimeString(new Date(attendance.checkInTime))
             : '--',
           reason: attendance.lateCheckInReason || 'Late check-in (No specific reason provided)',
         };
@@ -240,16 +240,10 @@ export const getAllEmployees = async (req: AuthenticatedRequest, res: Response):
         earlyCheckoutReason: attendance?.earlyCheckoutReason || null,
         lateCheckInReason: attendance?.lateCheckInReason || null,
         checkInTime: attendance?.checkInTime
-          ? new Date(attendance.checkInTime).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-          })
+          ? formatISTTimeString(new Date(attendance.checkInTime))
           : null,
         checkOutTime: attendance?.checkOutTime
-          ? new Date(attendance.checkOutTime).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-          })
+          ? formatISTTimeString(new Date(attendance.checkOutTime))
           : null,
       };
     });

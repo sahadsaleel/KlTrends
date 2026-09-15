@@ -94,9 +94,10 @@ export const isEarlyCheckoutIST = (date: Date = new Date()): boolean => {
 };
 
 /**
- * Check if the given time is after 10:00 AM (10:00) IST.
+ * Check if the given time is after 10:05 AM IST (10:00 AM shift start + 5-minute grace period).
+ * On-time up to and including 10:05 AM IST.
  */
 export const isLateCheckInIST = (date: Date = new Date()): boolean => {
-  const { hours, minutes, seconds } = getISTDateTime(date);
-  return hours > 10 || (hours === 10 && (minutes > 0 || seconds > 0));
+  const { hours, minutes } = getISTDateTime(date);
+  return hours > 10 || (hours === 10 && minutes > 5);
 };

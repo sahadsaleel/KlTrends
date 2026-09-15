@@ -58,6 +58,7 @@ export const getPool = (): mysql.Pool => {
       connectTimeout: 5000,
       enableKeepAlive: true,
       keepAliveInitialDelay: 0,
+      timezone: '+05:30',
     });
   }
   return pool;
