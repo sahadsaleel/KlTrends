@@ -14,6 +14,7 @@ import { Text } from './common/Text';
 import { colors } from '../theme/colors';
 import { AppAlert as Alert } from '../utils/appAlert';
 import { spacing, borderRadius } from '../theme/spacing';
+import { formatISTTime } from '../utils/timeUtils';
 
 interface SelfieVerificationModalProps {
   visible: boolean;
@@ -205,7 +206,7 @@ export const SelfieVerificationModal: React.FC<SelfieVerificationModalProps> = (
                 <View style={styles.statusItemRow}>
                   <Ionicons name="time-outline" size={16} color="#4B5563" />
                   <Text style={styles.statusItemText}>
-                    Timestamp: {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    Timestamp: {formatISTTime(new Date())}
                   </Text>
                 </View>
               </View>

@@ -27,6 +27,13 @@ import { spacing, borderRadius } from '../../theme/spacing';
 import { useAuth } from '../../hooks/useAuth';
 import { attendanceApi, ActivityItem, AttendanceStats } from '../../api/attendance';
 import { RootStackParamList } from '../../navigation/RootNavigator';
+import {
+  formatISTTime,
+  formatISTClock,
+  formatISTDate,
+  isLateCheckInIST,
+  isEarlyCheckoutIST,
+} from '../../utils/timeUtils';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Attendance'>;
 
@@ -110,9 +117,7 @@ export const AttendanceScreen: React.FC<Props> = ({ navigation }) => {
         const att = todayRes.data.attendance;
         if (att.checkInTime) {
           setIsCheckedIn(true);
-          setCheckInTimestamp(
-            new Date(att.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          );
+          setCheckInTimestamp(formatISTTime(att.checkInTime));
         } else {
           setIsCheckedIn(false);
           setCheckInTimestamp(null);
@@ -120,9 +125,7 @@ export const AttendanceScreen: React.FC<Props> = ({ navigation }) => {
 
         if (att.checkOutTime) {
           setIsCheckedOut(true);
-          setCheckOutTimestamp(
-            new Date(att.checkOutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          );
+          setCheckOutTimestamp(formatISTTime(att.checkOutTime));
         } else {
           setIsCheckedOut(false);
           setCheckOutTimestamp(null);
@@ -192,10 +195,7 @@ export const AttendanceScreen: React.FC<Props> = ({ navigation }) => {
       Alert.alert('Already Checked In', `You checked in today at ${checkInTimestamp || '10:00 AM'}.`);
       return;
     }
-    const now = new Date();
-    const shiftStart = new Date(now);
-    shiftStart.setHours(10, 0, 0, 0);
-    if (now > shiftStart) {
+    if (isLateCheckInIST()) {
       setLateCheckInReason('');
       setLateCheckInModalVisible(true);
       return;
@@ -224,11 +224,7 @@ export const AttendanceScreen: React.FC<Props> = ({ navigation }) => {
     setActionLoading(false);
 
     if (res.success && res.data) {
-      const checkInDate = new Date(res.data.checkInTime || new Date());
-      const nowStr = checkInDate.toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-      });
+      const nowStr = formatISTTime(res.data.checkInTime || new Date());
       setIsCheckedIn(true);
       setCheckInTimestamp(nowStr);
       if (res.data.selfieUrl) {
@@ -264,10 +260,7 @@ export const AttendanceScreen: React.FC<Props> = ({ navigation }) => {
     setActionLoading(false);
 
     if (res.success && res.data) {
-      const nowStr = new Date(res.data.checkOutTime || new Date()).toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-      });
+      const nowStr = formatISTTime(res.data.checkOutTime || new Date());
       setIsCheckedOut(true);
       setCheckOutTimestamp(nowStr);
       if (res.data.workDurationMinutes) {
@@ -305,11 +298,7 @@ export const AttendanceScreen: React.FC<Props> = ({ navigation }) => {
       return;
     }
 
-    const now = new Date();
-    const hours = now.getHours();
-    const mins = now.getMinutes();
-    // Shift ends at 5:30 PM (17:30)
-    const isEarly = hours < 17 || (hours === 17 && mins < 30);
+    const isEarly = isEarlyCheckoutIST();
 
     if (isEarly) {
       setSelectedPreset('');
@@ -327,16 +316,9 @@ export const AttendanceScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  // Format Clock & Date strings
-  const formattedTime = currentTime.toLocaleTimeString([], {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  });
-
-  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const formattedDate = `${dayNames[currentTime.getDay()]}, ${monthNames[currentTime.getMonth()]} ${currentTime.getDate()}`;
+  // Format Clock & Date strings (IST)
+  const formattedTime = formatISTClock(currentTime);
+  const formattedDate = formatISTDate(currentTime);
 
   const handleNavigation = useCallback(
     (tab: TabName) => {
